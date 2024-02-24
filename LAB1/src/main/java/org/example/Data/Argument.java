@@ -1,19 +1,17 @@
-package Data;
-
-import Factory.CommandType;
+package org.example.Data;
 
 import java.util.ArrayList;
 
 public class Argument {
-    private final CommandType command;
+    private final String commandPath;
     private final ArrayList<String> args = new ArrayList<>();
 
-    public Argument(CommandType command) {
-        this.command = command;
+    public Argument(String command) {
+        this.commandPath = command;
     }
 
-    public CommandType getCommand() {
-        return command;
+    public String getCommand() {
+        return commandPath;
     }
 
     public int getSize() {

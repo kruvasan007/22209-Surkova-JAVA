@@ -1,7 +1,7 @@
-package Factory.Command;
+package org.example.Factory.Command;
 
-import Data.Argument;
-import Data.Context;
+import org.example.Data.Argument;
+import org.example.Data.Context;
 
 public class Print implements Command {
 

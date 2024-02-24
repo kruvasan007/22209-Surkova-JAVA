@@ -1,7 +1,7 @@
-package Factory.Command;
+package org.example.Factory.Command;
 
-import Data.Argument;
-import Data.Context;
+import org.example.Data.Argument;
+import org.example.Data.Context;
 
 import java.util.EmptyStackException;
 
@@ -15,8 +15,8 @@ public class Pop implements Command {
             } else {
                 context.pop();
             }
-        } catch (EmptyStackException e) {
-            System.out.println("Stack err: " + e.getLocalizedMessage());
+        } catch (Exception e) {
+            throw new EmptyStackException();
         }
     }
 }

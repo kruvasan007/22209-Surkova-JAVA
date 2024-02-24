@@ -1,5 +1,6 @@
-package Data;
+package org.example.Data;
 
+import java.util.EmptyStackException;
 import java.util.Stack;
 import java.util.TreeMap;
 
@@ -15,12 +16,17 @@ public class Context {
         return stack.peek();
     }
 
-    public String pop() {
-        var value = stack.pop();
-        if (params.get(value) != null) {
-            return params.get(value).toString();
-        } else
+    public String pop() throws Exception{
+        String value;
+        try {
+            value = stack.pop();
+            if (params.get(value) != null) {
+                value = params.get(value).toString();
+            }
             return value;
+        } catch (Exception e) {
+            throw new Exception();
+        }
     }
 
     public void setParams(String name, Double val) {

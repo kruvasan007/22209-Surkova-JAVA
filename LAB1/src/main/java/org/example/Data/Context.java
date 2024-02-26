@@ -6,23 +6,28 @@ import java.util.TreeMap;
 
 public class Context {
     private final TreeMap<String, Double> params = new TreeMap<>();
-    private final Stack<String> stack = new Stack<>();
+    private final Stack<Double> stack = new Stack<>();
 
-    public void push(String val) {
+    public boolean checkParams(String val) {
+        return params.containsKey(val);
+    }
+
+    public void push(Double val) {
         stack.push(val);
     }
 
-    public String peek() {
+    public void pushArg(String val) {
+        stack.push(params.get(val));
+    }
+
+    public Double peek() {
         return stack.peek();
     }
 
-    public String pop() throws Exception{
-        String value;
+    public Double pop() throws Exception {
+        Double value;
         try {
             value = stack.pop();
-            if (params.get(value) != null) {
-                value = params.get(value).toString();
-            }
             return value;
         } catch (Exception e) {
             throw new Exception();
@@ -33,7 +38,7 @@ public class Context {
         params.put(name, val);
     }
 
-    public double getParams(String name) {
+    public Double getParams(String name) {
         return params.get(name);
     }
 

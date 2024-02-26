@@ -9,9 +9,9 @@ public class Plus implements Command {
 
     @Override
     public void doOperation(Context context, Argument args) throws Exception {
-        var firstOp = Double.valueOf(context.pop());
-        var secondOp = Double.parseDouble(context.pop());
-        double result = firstOp + secondOp;
-        context.push(Double.toString(result));
+        var firstOp = context.pop();
+        var secondOp = context.pop();
+        Double result = firstOp + secondOp;
+        context.push(result);
     }
 }

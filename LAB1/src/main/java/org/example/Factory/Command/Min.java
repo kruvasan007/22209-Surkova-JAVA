@@ -8,10 +8,10 @@ public class Min implements Command {
     @Override
     public void doOperation(Context context, Argument args) throws Exception {
         try {
-            var firstOp = Double.valueOf(context.pop());
-            var secondOp = Double.valueOf(context.pop());
+            var firstOp = context.pop();
+            var secondOp = context.pop();
             var result = secondOp - firstOp;
-            context.push(Double.toString(result));
+            context.push(result);
         } catch (Exception e) {
             throw new Exception(e.getMessage());
         }

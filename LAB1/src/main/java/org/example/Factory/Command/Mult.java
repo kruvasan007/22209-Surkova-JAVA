@@ -9,9 +9,9 @@ public class Mult implements Command {
 
     @Override
     public void doOperation(Context context, Argument args) throws Exception {
-        var firstOp = Double.valueOf(context.pop());
-        var secondOp = Double.valueOf(context.pop());
+        var firstOp = context.pop();
+        var secondOp = context.pop();
         var result = firstOp * secondOp;
-        context.push(Double.toString(result));
+        context.push(result);
     }
 }

@@ -3,15 +3,15 @@ package org.example.Data;
 import java.util.ArrayList;
 
 public class Argument {
-    private final String commandPath;
+    private final String command;
     private final ArrayList<String> args = new ArrayList<>();
 
     public Argument(String command) {
-        this.commandPath = command;
+        this.command = command;
     }
 
-    public String getCommand() {
-        return commandPath;
+    public String getCommandName() {
+        return command;
     }
 
     public int getSize() {

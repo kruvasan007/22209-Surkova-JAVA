@@ -7,9 +7,9 @@ public class Div implements Command {
 
     @Override
     public void doOperation(Context context, Argument args) throws Exception {
-        var firstOp = Double.valueOf(context.pop());
-        var secondOp = Double.valueOf(context.pop());
+        var firstOp = context.pop();
+        var secondOp = context.pop();
         double result = secondOp / firstOp;
-        context.push(Double.toString(result));
+        context.push(result);
     }
 }

@@ -11,10 +11,10 @@ public class Sqrt implements Command {
     public void doOperation(Context context, Argument args) throws Exception {
         try {
             var firstOp = context.pop();
-            var result = sqrt(Double.parseDouble(firstOp));
-            context.push(Double.toString(result));
+            var result = sqrt(firstOp);
+            context.push(result);
         } catch (Exception e) {
-            throw new Exception();
+            throw new Exception(e.getMessage());
         }
     }
 }

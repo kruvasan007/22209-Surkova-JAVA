@@ -11,8 +11,12 @@ public class Push implements Command {
             if (context.checkParams(args.getArgs(0))) {
                 context.pushArg(args.getArgs(0));
             } else
-                context.push(Double.parseDouble(args.getArgs(0)));
-        } catch (Exception e) {
+                if(!Character.isLetter(args.getArgs(0).toCharArray()[0])){
+                    context.push(Double.parseDouble(args.getArgs(0)));
+                } else {
+                    context.pushArg(args.getArgs(0));
+                }
+        } catch (ArrayIndexOutOfBoundsException e) {
             throw new Exception("Arguments array is empty");
         }
     }

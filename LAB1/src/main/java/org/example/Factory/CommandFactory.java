@@ -28,16 +28,21 @@ public class CommandFactory {
 
     public Command createCommand(String commandName) {
         Command command = null;
-        try {
-            if (commandList.containsKey(commandName)) {
-                return commandList.get(commandName);
-            } else {
-                command = (Command) Class.forName(properties.get(commandName).toString()).getConstructors()[0].newInstance();
+        if (commandList.containsKey(commandName)) {
+            return commandList.get(commandName);
+        } else {
+            if (properties.get(commandName) != null) {
+                try {
+                    command = (Command) Class.forName(properties.get(commandName).toString()).getConstructors()[0].newInstance();
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                         ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
                 commandList.put(commandName, command);
                 log.logInfo("Create command: " + command.getClass().getName());
+            } else {
+                log.logError("Create command: no this command in config");
             }
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            log.logError("Error in command class factory: " + e.getMessage());
         }
         return command;
     }

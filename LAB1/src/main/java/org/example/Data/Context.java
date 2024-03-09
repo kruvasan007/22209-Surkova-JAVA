@@ -1,10 +1,13 @@
 package org.example.Data;
 
+import org.example.Debug.ColorLogger;
+
 import java.util.EmptyStackException;
 import java.util.Stack;
 import java.util.TreeMap;
 
 public class Context {
+    private ColorLogger log = new ColorLogger();
     private final TreeMap<String, Double> params = new TreeMap<>();
     private final Stack<Double> stack = new Stack<>();
 
@@ -17,20 +20,25 @@ public class Context {
     }
 
     public void pushArg(String val) {
-        stack.push(params.get(val));
+        if (params.get(val) != null)
+            stack.push(params.get(val));
+        else {
+            log.logError("No such argument. Push 0");
+            stack.push(0.0);
+        }
     }
 
     public Double peek() {
         return stack.peek();
     }
 
-    public Double pop() throws Exception {
+    public Double pop() throws EmptyStackException {
         Double value;
         try {
             value = stack.pop();
             return value;
-        } catch (Exception e) {
-            throw new Exception();
+        } catch (EmptyStackException e) {
+            throw new EmptyStackException();
         }
     }
 

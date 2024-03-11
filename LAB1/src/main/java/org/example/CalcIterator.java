@@ -3,6 +3,8 @@ package org.example;
 import org.example.Data.Argument;
 import org.example.Data.Context;
 import org.example.Debug.ColorLogger;
+import org.example.Exception.CommandException;
+import org.example.Exception.FabricException;
 import org.example.Factory.CommandFactory;
 import org.example.Parser.Parser;
 
@@ -19,15 +21,16 @@ public class CalcIterator {
         this.parser = parser;
     }
 
-    public void calculation() {
+    public void calculation(){
         var commandFactory = new CommandFactory(CONFIG_PATH);
         log.logInfo("Start calculation...");
         Argument argument;
         while ((argument = parser.getNextArg()) != null) {
             try {
                 commandFactory.createCommand(argument.getCommandName()).doOperation(context, argument);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            } catch (CommandException | FabricException e) {
+                System.out.println("Calculator error: " + e.getMessage());
+                break;
             }
         }
     }

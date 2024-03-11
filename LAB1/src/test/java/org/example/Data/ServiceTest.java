@@ -8,7 +8,7 @@ public class ServiceTest {
     @Test
     void argumentGetCommand() {
         var arg = new Argument("PUSH");
-        Assertions.assertEquals("PUSH", arg.getCommand());
+        Assertions.assertEquals("PUSH", arg.getCommandName());
     }
 
     @Test
@@ -35,29 +35,29 @@ public class ServiceTest {
     @Test
     void contextPushPop() throws Exception {
         var context = new Context();
-        context.push("4");
-        Assertions.assertEquals("4", context.pop());
+        context.push(4.0);
+        Assertions.assertEquals(4.0, context.pop());
     }
 
     @Test
     void contextPeek() {
         var context = new Context();
-        context.push("4");
-        Assertions.assertEquals("4", context.peek());
+        context.push(4.0);
+        Assertions.assertEquals(4.0, context.peek());
     }
 
     @Test
     void contextPushPopParams() throws Exception {
         var context = new Context();
         context.setParams("a", 4.0);
-        context.push("a");
-        Assertions.assertEquals("4.0", context.pop());
+        context.pushArg("a");
+        Assertions.assertEquals(4.0, context.pop());
     }
 
     @Test
     void contextPushPopWithException() {
         var context = new Context();
-        Assertions.assertThrows(Exception.class, () -> context.pop());
+        Assertions.assertThrows(Exception.class, context::pop);
     }
 
 }

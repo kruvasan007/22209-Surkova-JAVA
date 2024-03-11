@@ -2,9 +2,11 @@ package org.example.Factory;
 
 
 import org.example.Debug.ColorLogger;
+import org.example.Exception.FabricException;
 import org.example.Factory.Command.Command;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
@@ -26,7 +28,7 @@ public class CommandFactory {
         }
     }
 
-    public Command createCommand(String commandName) {
+    public Command createCommand(String commandName) throws FabricException {
         Command command = null;
         if (commandList.containsKey(commandName)) {
             return commandList.get(commandName);
@@ -34,9 +36,8 @@ public class CommandFactory {
             if (properties.get(commandName) != null) {
                 try {
                     command = (Command) Class.forName(properties.get(commandName).toString()).getConstructors()[0].newInstance();
-                } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                         ClassNotFoundException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    throw new FabricException(e.getMessage());
                 }
                 commandList.put(commandName, command);
                 log.logInfo("Create command: " + command.getClass().getName());

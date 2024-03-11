@@ -20,10 +20,10 @@ class MathTest {
         context = new Context();
         var comm = new Min();
         var a = new Argument("MIN");
-        context.push("5");
-        context.push("4");
+        context.push(5.0);
+        context.push(4.0);
         comm.doOperation(context, a);
-        Assertions.assertEquals("1.0", context.peek());
+        Assertions.assertEquals(1.0, context.peek());
     }
 
     @Test
@@ -32,7 +32,7 @@ class MathTest {
         context = new Context();
         var comm = new Plus();
         var a = new Argument("PLUS");
-        context.push("5");
+        context.push(5.0);
         Assertions.assertThrows(Exception.class, ()->comm.doOperation(context, a));
     }
 
@@ -42,10 +42,10 @@ class MathTest {
         context = new Context();
         var comm = new Plus();
         var a = new Argument("PLUS");
-        context.push("5");
-        context.push("4");
+        context.push(5.0);
+        context.push(4.0);
         comm.doOperation(context, a);
-        Assertions.assertEquals("9.0", context.peek());
+        Assertions.assertEquals(9.0, context.peek());
     }
 
     @Test
@@ -54,7 +54,7 @@ class MathTest {
         context = new Context();
         var comm = new Min();
         var a = new Argument("MIN");
-        context.push("5");
+        context.push(5.0);
         Assertions.assertThrows(Exception.class, () ->
                 comm.doOperation(context, a));
     }
@@ -65,10 +65,10 @@ class MathTest {
         context = new Context();
         var comm = new Div();
         var a = new Argument("DIV");
-        context.push("8");
-        context.push("4");
+        context.push(8.0);
+        context.push(4.0);
         comm.doOperation(context, a);
-        Assertions.assertEquals("2.0", context.peek());
+        Assertions.assertEquals(2.0, context.peek());
     }
 
 
@@ -79,10 +79,10 @@ class MathTest {
         context = new Context();
         var comm = new Mult();
         var a = new Argument("MULT");
-        context.push("5");
-        context.push("4");
+        context.push(5.0);
+        context.push(4.0);
         comm.doOperation(context, a);
-        Assertions.assertEquals("20.0", context.peek());
+        Assertions.assertEquals(20.0, context.peek());
     }
 
     @Test
@@ -91,9 +91,9 @@ class MathTest {
         context = new Context();
         var comm = new Sqrt();
         var a = new Argument("SQRT");
-        context.push("4");
+        context.push(4.0);
         comm.doOperation(context, a);
-        Assertions.assertEquals("2.0", context.peek());
+        Assertions.assertEquals(2.0, context.peek());
     }
 
     @Test

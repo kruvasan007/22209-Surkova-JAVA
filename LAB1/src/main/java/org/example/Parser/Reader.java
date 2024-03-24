@@ -15,28 +15,25 @@ public class Reader {
     private final int MODE_COMMAND_LINE = 1;
     private final int MODE_FILE = 2;
 
-    public void createInstance(String filePath) {
+    public void createInstance(String filePath) throws Exception {
         MODE = MODE_FILE;
         try {
             bufferedReader = new BufferedReader(new FileReader(filePath));
             log.logInfo("Open command file...");
         } catch (Exception e) {
             log.logError("PARSER: Error while reading file - " + e.getMessage());
+            throw new Exception(e);
         }
     }
 
-    public void createInstance(){
+    public void createInstance() {
         MODE = MODE_COMMAND_LINE;
         in = new Scanner(System.in);
-        try {
-            log.logInfo("Open console...");
-            log.logInfo("Enter 'EXIT' to exit");
-        } catch (Exception e) {
-            System.err.println("Error while reading console: " + e.getMessage());
-        }
+        log.logInfo("Open console...");
+        log.logInfo("Enter 'EXIT' to exit");
     }
 
-    public String getNextLine(){
+    public String getNextLine() {
         String curStr;
         if (MODE == MODE_COMMAND_LINE) {
             if ((curStr = in.nextLine()).equals("EXIT")) {
@@ -44,7 +41,7 @@ public class Reader {
             }
         } else {
             try {
-                if ((curStr = bufferedReader.readLine()) == null){
+                if ((curStr = bufferedReader.readLine()) == null) {
                     log.logInfo("File parsing is complete");
                 }
             } catch (IOException e) {

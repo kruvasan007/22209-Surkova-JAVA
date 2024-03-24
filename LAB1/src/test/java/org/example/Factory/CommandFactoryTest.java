@@ -3,6 +3,7 @@ package org.example.Factory;
 import org.example.CalcIterator;
 import org.example.Exception.FabricException;
 import org.example.Parser.Parser;
+import org.example.Parser.Reader;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -40,6 +41,18 @@ class CommandFactoryTest {
         }
         CalcIterator calcIterator = new CalcIterator(parser);
         calcIterator.calculation();
+    }
+
+    @Test
+    void testInputError() {
+        Parser parser = new Parser();
+        Assertions.assertThrows(Exception.class, () -> parser.create("src/main/resources/input.tx"));
+    }
+
+    @Test
+    void testConsoleReader() {
+        Parser parser = new Parser();
+        parser.create();
     }
 
     @Test

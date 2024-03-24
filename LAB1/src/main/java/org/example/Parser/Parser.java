@@ -16,7 +16,7 @@ public class Parser {
         reader.createInstance();
     }
 
-    public void create(String filePath) {
+    public void create(String filePath) throws Exception {
         reader.createInstance(filePath);
     }
 

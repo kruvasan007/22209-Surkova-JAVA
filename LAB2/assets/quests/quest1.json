@@ -1,0 +1,51 @@
+{
+  questTitle: "First quest",
+  questID: 1,
+  goldReward: 100,
+  xpReward: 100,
+  isQuestComplete: false,
+  questTasks: [
+    {
+      taskProperties: {
+        TASK_STATE: NONE,
+        TARGET_TYPE: BREAD,
+        TARGET_LOCATION: MAIN_CAR
+      },
+      id: 1,
+      taskPhrase: "Manager: Hello! We have your first order for you, and it's a little special.\n\nDelivery guy: Oh, interesting! I'm ready for this. What's the order?\n\nManager: This order is slightly different from the usual ones. You will receive a box with a very valuable and mysterious cargo. We need you to take extra care and safety when delivering it.\n\nThe deliverer: I see. Could you tell me what's in the box?\n\nManager: Unfortunately, this is confidential information. The main thing is to deliver the box safely. You will need to keep an eye on her and not let anyone get close to her.\n\nThe deliveryman: Understood, I will definitely look after her. Where can I get it?\n\nManager: The box needs to be found on one of the streets of the city. Unfortunately, the sender did not provide his exact address.  Please be careful and hurry up.\n\nDelivery guy: No problem, I'm on my way right now.",
+      questType: DELIVERY,
+      questPoint: {
+        x: 24,
+        y: 22
+      }
+    },
+    {
+      taskProperties: {
+        TASK_STATE: NONE,
+        TARGET_TYPE: BREAD,
+        TARGET_LOCATION: MAIN_CAR
+      },
+      id: 2,
+      taskPhrase: "Manager: Hello! We have a slightly unusual order for you. We have lost one of our boxes with very important contents, and we urgently need to find it and bring it back.\n\nThe deliverer: Understood. Where and when was the box lost?\n\nManager: Unfortunately, we can't say exactly when it happened. The box was probably dumped somewhere on the streets of the city during transportation. We know the approximate location where she might have been lost, so you'll have to start looking from there.\n\nDelivery guy: Okay. What does the box look like? And is there anything special that I need to know about her?\n\nManager: The box looks normal, but there is a very valuable cargo inside. It can be marked with our logo, but not necessarily. The main thing is to find it as soon as possible and bring it back. Be prepared for the fact that someone else may have already discovered it, so act quickly.\n\nThe deliverer: Understood. I'll start the search right away. I'll let you know as soon as I find the box.\n\nManager: Great, we expect positive results from you. Good luck!",
+      questType: DELIVERY,
+      questPoint: {
+        x: 24,
+        y: 22
+      }
+    },
+    {
+      taskProperties: {
+        TASK_STATE: NONE,
+        TARGET_TYPE: NPS,
+        TARGET_LOCATION: MAIN_CAR
+      },
+      id: 3,
+      taskPhrase: "Manager: Welcome. We have a very important task for you. We have received an order from our large client, which requires the elimination of a certain person who is the director of a competing company.\n\nThe deliverer: I see. What information do you have about the goal?\n\nManager: We know his name, address, and schedule. He usually visits various offices during the day. \n\nDelivery guy: Okay. What instructions do I have?\n\nManager: We prefer to minimize the risk and make the murder as inconspicuous as possible. Your task is to find the moment and act quickly and silently.\n\nThe deliverer: Understood. What are the deadlines?\n\nManager: The faster the better, but the main thing is to complete the task safely and without problems. Do not put yourself at risk of being caught or identified.\n\nDelivery guy: Okay, I'll start working on it. Wait for the results from me.",
+      questType: KILL,
+      questPoint: {
+        x: 4,
+        y: 0
+      }
+    }
+  ]
+}

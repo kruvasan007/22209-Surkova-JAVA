@@ -8,6 +8,7 @@ import org.example.Exception.FabricException;
 import org.example.Factory.CommandFactory;
 import org.example.Parser.Parser;
 
+import java.io.IOException;
 import java.lang.reflect.AnnotatedArrayType;
 import java.util.ArrayList;
 
@@ -21,7 +22,7 @@ public class CalcIterator {
         this.parser = parser;
     }
 
-    public void calculation(){
+    public void calculation() throws IOException {
         var commandFactory = new CommandFactory(CONFIG_PATH);
         log.logInfo("Start calculation...");
         Argument argument;

@@ -7,7 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Scanner;
 
-public class Reader {
+public class Reader implements AutoCloseable {
     private ColorLogger log = new ColorLogger();
     private Scanner in;
     private BufferedReader bufferedReader;
@@ -33,21 +33,23 @@ public class Reader {
         log.logInfo("Enter 'EXIT' to exit");
     }
 
-    public String getNextLine() {
+    public String getNextLine() throws IOException {
         String curStr;
         if (MODE == MODE_COMMAND_LINE) {
             if ((curStr = in.nextLine()).equals("EXIT")) {
                 log.logInfo("Console parsing is complete");
             }
         } else {
-            try {
                 if ((curStr = bufferedReader.readLine()) == null) {
                     log.logInfo("File parsing is complete");
                 }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
         }
         return curStr;
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (MODE == MODE_COMMAND_LINE) in.close();
+        else bufferedReader.close();
     }
 }

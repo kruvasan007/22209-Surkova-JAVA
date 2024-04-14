@@ -7,6 +7,8 @@ import org.example.Parser.Reader;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.io.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class CommandFactoryTest {
@@ -33,14 +35,17 @@ class CommandFactoryTest {
 
     @Test
     void testInput() {
-        Parser parser = new Parser();
-        try {
-            parser.create("src/main/resources/input.txt");
+        try(Parser parser = new Parser()) {
+            try {
+                parser.create("src/main/resources/input.txt");
+            } catch (Exception e) {
+                System.err.println("Parse error: " + e.getMessage());
+            }
+            CalcIterator calcIterator = new CalcIterator(parser);
+            calcIterator.calculation();
         } catch (Exception e) {
-            System.err.println("Parse error: " + e.getMessage());
+            throw new RuntimeException(e);
         }
-        CalcIterator calcIterator = new CalcIterator(parser);
-        calcIterator.calculation();
     }
 
     @Test
@@ -51,12 +56,22 @@ class CommandFactoryTest {
 
     @Test
     void testConsoleReader() {
-        Parser parser = new Parser();
-        parser.create();
+        try {
+            System.setIn(new FileInputStream("src/main/resources/testConsoleInput.txt"));
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        try(Parser parser = new Parser()) {
+            parser.create();
+            CalcIterator calcIterator = new CalcIterator(parser);
+            calcIterator.calculation();
+        }catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
-    void testInputException() {
+    void testInputException() throws IOException {
         Parser parser = new Parser();
         try {
             parser.create("src/main/resources/inputWrong.txt");

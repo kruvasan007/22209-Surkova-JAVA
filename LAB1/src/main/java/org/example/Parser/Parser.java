@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Parser {
+public class Parser implements AutoCloseable {
     private final Reader reader = new Reader();
 
     public void create() {
@@ -21,7 +21,7 @@ public class Parser {
     }
 
 
-    public Argument getNextArg() {
+    public Argument getNextArg() throws IOException {
         String curStr = reader.getNextLine();
         Argument arg = null;
         if (curStr != null) {
@@ -42,5 +42,10 @@ public class Parser {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public void close() throws Exception {
+        reader.close();
     }
 }

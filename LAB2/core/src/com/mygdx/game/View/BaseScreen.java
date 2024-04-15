@@ -1,10 +1,8 @@
 package com.mygdx.game.View;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -12,16 +10,14 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.mygdx.game.Service.Managers.ResourceManager;
+import com.mygdx.game.View.Observers.ViewObject;
 
-public class BaseScreen implements Screen {
-    protected final Game gdxGame;
-    protected OrthographicCamera gameCam;
+public class BaseScreen extends ViewObject implements Screen {
     protected ResourceManager resourceManager;
     protected Stage stage;
 
-    public BaseScreen(Game gdxGame, ResourceManager resourceManager) {
+    public BaseScreen(ResourceManager resourceManager) {
         this.resourceManager = resourceManager;
-        this.gdxGame = gdxGame;
     }
 
     public void createButton(String buttonName, float posX, float posY, Table table) {
@@ -47,7 +43,7 @@ public class BaseScreen implements Screen {
 
     @Override
     public void show() {
-        // Nothing
+
     }
 
     @Override
@@ -79,13 +75,5 @@ public class BaseScreen implements Screen {
     @Override
     public void dispose() {
 
-    }
-
-    public OrthographicCamera getGameCam() {
-        return gameCam;
-    }
-
-    public Stage getStage() {
-        return stage;
     }
 }

@@ -1,13 +1,9 @@
 package com.mygdx.game.Service.Animation;
-
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 
-import java.util.ArrayList;
+public interface CommonHeroAnimator {
 
-abstract public class CommonHeroAnimator {
+    void setNextFrame(float x, float y);
 
-    public abstract void setNextFrame(float x, float y);
-
-    public abstract Sprite getSprite();
+    Sprite getSprite();
 }

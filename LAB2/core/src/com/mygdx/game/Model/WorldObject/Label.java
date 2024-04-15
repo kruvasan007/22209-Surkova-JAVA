@@ -1,9 +1,5 @@
 package com.mygdx.game.Model.WorldObject;
 
-import com.badlogic.gdx.scenes.scene2d.ui.TextArea;
-import com.badlogic.gdx.scenes.scene2d.ui.TextField;
-import com.mygdx.game.Service.Managers.ResourceManager;
-
 import java.util.Timer;
 import java.util.TimerTask;
 

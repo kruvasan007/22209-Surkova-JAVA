@@ -13,16 +13,6 @@ public class ComponentObject {
         observers.add(conversationObserver);
     }
 
-    public void removeObserver(ComponentObserver conversationObserver) {
-        observers.removeValue(conversationObserver, true);
-    }
-
-    public void removeAllObservers() {
-        for(ComponentObserver observer: observers) {
-            observers.removeValue(observer, true);
-        }
-    }
-
     protected void notify(final String value, ComponentObserver.ComponentEvent event) {
         for(ComponentObserver observer: observers) {
             observer.onNotify(value, event);

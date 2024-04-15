@@ -18,10 +18,6 @@ public abstract class MapObject {
         isVisible = false;
     }
 
-    public void setVisible() {
-        isVisible = true;
-    }
-
     public abstract float getWidth();
 
     public abstract float getHeight();

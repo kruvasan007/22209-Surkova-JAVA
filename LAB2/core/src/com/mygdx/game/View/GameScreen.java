@@ -1,6 +1,9 @@
 package com.mygdx.game.View;
 
-import com.badlogic.gdx.*;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputProcessor;
+import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -21,25 +24,24 @@ import com.mygdx.game.Observers.Component;
 import com.mygdx.game.Observers.ComponentObserver;
 import com.mygdx.game.Renderer.TextureMapObjectRenderer;
 import com.mygdx.game.Service.Managers.ResourceManager;
+import com.mygdx.game.View.Observers.ViewObserver;
 
 public class GameScreen extends BaseScreen implements Screen, InputProcessor, ComponentObserver {
     private float deltaTime = 0;
-    private TextureMapObjectRenderer textureMapObjectRenderer;
+    private final TextureMapObjectRenderer textureMapObjectRenderer;
     private final OrthographicCamera camera;
-    private Dialog dialog;
     private final World world;
     private final Hero hero;
     private final OrderDistributionPoint distributionPoint;
     private final ResourceManager resourceManager;
-
     private final OrthogonalTiledMapRenderer renderer;
-    private Controller controller;
-    private SpriteBatch batch;
+    private final Controller controller;
+    private final SpriteBatch batch;
     private boolean isOrderVisible = false;
     private boolean isDialogOpen = false;
 
-    public GameScreen(Game game, ResourceManager resourceManager) {
-        super(game, resourceManager);
+    public GameScreen(ResourceManager resourceManager) {
+        super(resourceManager);
         this.resourceManager = resourceManager;
         controller = new Controller();
         this.world = controller.getWorld();
@@ -50,8 +52,10 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
 
         batch = new SpriteBatch();
         stage = new Stage();
-        cameraResize();
+        cameraResize(280, 280);
         hero.moveHero(camera.viewportWidth / 2, camera.viewportHeight / 2);
+        camera.position.x = hero.getX();
+        camera.position.y = hero.getY();
         textureMapObjectRenderer = new TextureMapObjectRenderer(world.getTiledMap(), batch);
 
         controller.addObserver(this);
@@ -79,7 +83,7 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
             case MOVE_ORDER -> isOrderVisible = world.getOrderPoint().isVisible();
             case START_TASK -> isOrderVisible = true;
             case COMPLETE_TASK -> isOrderVisible = false;
-            case END_GAME -> gdxGame.setScreen(new EndGameScreen(gdxGame, resourceManager));
+            case END_GAME -> this.notify("Edn the game", ViewObserver.ViewEvent.END_GAME);
             default -> {
             }
         }
@@ -89,7 +93,7 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
         QuestTask questTask = controller.getQuestController().getCurrentTask();
         if (!isDialogOpen) {
             Gdx.input.setInputProcessor(stage);
-            dialog = new Dialog("New order", ResourceManager.skin, "dialog") {
+            Dialog dialog = new Dialog("New order", ResourceManager.skin, "dialog") {
                 @Override
                 protected void result(Object object) {
                     if (object.toString().equals("false")) {
@@ -103,9 +107,10 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
                 }
             };
             dialog.text(questTask.getTaskPhrase());
-            dialog.button("No", false).setWidth(300);
-            dialog.button("Yes", true).setWidth(300);
-            dialog.setPosition(camera.viewportWidth, camera.viewportHeight);
+            dialog.button("No", false);
+            dialog.button("Yes", true);
+            dialog.setScaleY(1.75f);
+            dialog.setScaleX(1.15f);
             dialog.show(stage);
             isDialogOpen = true;
         }
@@ -132,8 +137,8 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
     }
 
 
-    private void cameraResize() {
-        camera.setToOrtho(false, 280, 280);
+    private void cameraResize(int width, int height) {
+        camera.setToOrtho(false, width, height);
         camera.update();
     }
 
@@ -205,10 +210,9 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
         }
     }
 
-
     @Override
     public void resize(int width, int height) {
-
+        super.resize(width, height);
     }
 
     @Override
@@ -216,16 +220,6 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
         return false;
     }
 
-
-    @Override
-    public void pause() {
-
-    }
-
-    @Override
-    public void resume() {
-
-    }
 
     @Override
     public void hide() {

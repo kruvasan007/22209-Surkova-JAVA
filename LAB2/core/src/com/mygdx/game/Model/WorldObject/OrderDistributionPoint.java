@@ -1,13 +1,12 @@
 package com.mygdx.game.Model.WorldObject;
 
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 
 public class OrderDistributionPoint extends MapObject {
     private final Sprite sprite;
 
-    private Label label;
+    private final Label label;
 
     public OrderDistributionPoint() {
         bounds.x = 10 * 32;
@@ -33,11 +32,9 @@ public class OrderDistributionPoint extends MapObject {
     public float getHeight() {
         return bounds.height;
     }
-
     public Label getLabel() {
         return label;
     }
-
     public Sprite getSprite() {
         return sprite;
     }

@@ -1,19 +1,36 @@
 package com.mygdx.game;
 
-import com.mygdx.game.Controllers.Controller;
-import com.mygdx.game.Observers.ComponentObserver;
 import com.mygdx.game.Service.Managers.ResourceManager;
+import com.mygdx.game.View.EndGameScreen;
+import com.mygdx.game.View.GameScreen;
 import com.mygdx.game.View.MenuScreen;
+import com.mygdx.game.View.Observers.ViewObserver;
 
-public class DeliveryGame extends com.badlogic.gdx.Game implements ComponentObserver {
+public class DeliveryGame extends com.badlogic.gdx.Game implements ViewObserver {
     private ResourceManager resourceManager;
-    private Controller controller;
 
     @Override
     public void create() {
         resourceManager = new ResourceManager();
-        MenuScreen menuScreen = new MenuScreen(this, resourceManager);
+        MenuScreen menuScreen = new MenuScreen(resourceManager);
+        menuScreen.addObserver(this);
         this.setScreen(menuScreen);
+    }
+
+    @Override
+    public void onNotify(String value, ViewEvent event) {
+        switch (event) {
+            case END_GAME -> {
+                EndGameScreen endGameScreen = new EndGameScreen(resourceManager);
+                this.setScreen(endGameScreen);
+                endGameScreen.addObserver(this);
+            }
+            case START_GAME -> {
+                GameScreen gameScreen = new GameScreen(resourceManager);
+                this.setScreen(gameScreen);
+                gameScreen.addObserver(this);
+            }
+        }
     }
 
     @Override
@@ -38,10 +55,5 @@ public class DeliveryGame extends com.badlogic.gdx.Game implements ComponentObse
     @Override
     public void resume() {
         super.resume();
-    }
-
-    @Override
-    public void onNotify(String value, ComponentEvent event) {
-
     }
 }

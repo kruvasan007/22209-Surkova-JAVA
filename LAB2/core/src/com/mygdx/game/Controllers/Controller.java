@@ -6,7 +6,6 @@ import com.mygdx.game.Model.WorldObject.Hero;
 import com.mygdx.game.Observers.Component;
 import com.mygdx.game.Observers.ComponentObject;
 import com.mygdx.game.Observers.ComponentObserver;
-import com.mygdx.game.Quest.QuestController;
 import com.mygdx.game.Service.Managers.CollisionManager;
 
 public class Controller extends ComponentObject implements Component {
@@ -31,15 +30,15 @@ public class Controller extends ComponentObject implements Component {
     }
 
     public void checkQuestPointSenderCollision() {
-        if (collisionManager.checkCollision(hero, world.getDistributionPoint()) && questController.isTasksAvailable()){
+        if (collisionManager.checkCollision(hero, world.getDistributionPoint())
+                && questController.isTasksAvailable())
             notify("Get new task", ComponentObserver.ComponentEvent.GET_NEW_TASK);
-        }
     }
 
     public void checkQuestAction() {
         if (questController.isTaskStarted()) {
             switch (questController.getCurrentTask().getQuestType()) {
-                case DELIVERY : {
+                case DELIVERY -> {
                     if (collisionManager.checkCollision(
                             world.getOrderPoint(), hero)) {
                         hero.setPickable();
@@ -50,16 +49,15 @@ public class Controller extends ComponentObject implements Component {
                         hero.setUnpickable();
                         questController.setTaskDone();
                     }
-                    break;
                 }
-                case KILL : {
+                case KILL -> {
                     if (!world.getNpcList()
                             .get(questController.getCurrentTask().getQuestPoint().getX()).isAlive()) {
                         notify("End game", ComponentObserver.ComponentEvent.END_GAME);
                     }
-                    break;
                 }
-                default : throw new IllegalStateException("Unexpected value: " + questController.getCurrentTask().getQuestType());
+                default ->
+                        throw new IllegalStateException("Unexpected value: " + questController.getCurrentTask().getQuestType());
             }
         }
     }
@@ -89,15 +87,6 @@ public class Controller extends ComponentObject implements Component {
 
     @Override
     public void receiveMessage(String message) {
-        String[] string = message.split(MESSAGE_TOKEN);
-
-        if (string.length == 0) {
-            return;
-        }
-    }
-
-    @Override
-    public void dispose() {
-
+        //later...
     }
 }

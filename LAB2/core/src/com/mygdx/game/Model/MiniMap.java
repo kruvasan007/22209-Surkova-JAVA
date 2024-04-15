@@ -11,20 +11,14 @@ import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 public class MiniMap {
     private final SpriteBatch batch;
     private final Sprite sprite;
-    private OrthogonalTiledMapRenderer renderer;
-    private OrthographicCamera camera = new OrthographicCamera();
+    private final OrthogonalTiledMapRenderer renderer;
+    private final OrthographicCamera camera = new OrthographicCamera();
 
-    private int width;
-    private int height;
-
-    public MiniMap(TiledMap map, int width, int height) {
-        this.width = width;
-        this.height = height;
+    public MiniMap(TiledMap map) {
         renderer = new OrthogonalTiledMapRenderer(map);
         camera.setToOrtho(false, 500, 500);
         camera.zoom = 13f;
         batch = new SpriteBatch();
-
         sprite = new Sprite();
         sprite.setTexture(new Texture(Gdx.files.internal("Textures/e1.png")));
     }

@@ -13,7 +13,7 @@ public class NonPlayerCharacter extends MapObject {
     private int health = 100;
     private boolean IS_ALIVE = true;
     float FREQUENCY_FRAME_CHANGE = 0.1f;
-    private final int SHIFT_X = 16;
+    private final int SHIFT_X = 8;
     private final int SHIFT_Y = 24;
     private final Coords start;
     private final Coords end;
@@ -70,8 +70,13 @@ public class NonPlayerCharacter extends MapObject {
     public void moveCharacter() {
         deltaTime += Gdx.graphics.getDeltaTime();
         if (deltaTime > FREQUENCY_FRAME_CHANGE && IS_ALIVE) {
-            if (bounds.x > SHIFT_X + 32 * end.getX() || bounds.x < SHIFT_X + 32 * start.getX())
+            if (bounds.x > 32 * end.getX()){
+                bounds.x -= 4;
                 speed = -speed;
+            } else if(bounds.x < 32 * start.getX()) {
+                bounds.x += 4;
+                speed = -speed;
+            }
             float x = -deltaTime * speed * 1.5f;
             bounds.x += x;
             animator.setNextFrame(x, 0);

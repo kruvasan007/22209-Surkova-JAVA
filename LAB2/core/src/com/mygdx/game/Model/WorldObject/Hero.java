@@ -8,7 +8,7 @@ public class Hero extends MapObject {
     private final PlayerAnimator animator;
     private final int PLAYER_SHIFT_X = 16;
     private final int PLAYER_SHIFT_Y = 24;
-    private final int playerSpeed = 500;
+    private final int PLAYER_SPEED = 500;
     private boolean pickable = false;
 
     public Hero() {
@@ -74,6 +74,6 @@ public class Hero extends MapObject {
     }
 
     public int getPlayerSpeed() {
-        return playerSpeed;
+        return PLAYER_SPEED;
     }
 }

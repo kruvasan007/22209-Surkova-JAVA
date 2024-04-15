@@ -9,8 +9,9 @@ public class DesktopLauncher {
 	public static void main (String[] arg) {
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 		config.setForegroundFPS(60);
-		config.setWindowedMode(1280, 1080);
 		config.setTitle("DeliveryGame");
+		config.setResizable(false);
+		config.setWindowedMode(1600, 1200);
 		new Lwjgl3Application(new DeliveryGame(), config);
 	}
 }

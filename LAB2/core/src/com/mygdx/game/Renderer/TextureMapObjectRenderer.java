@@ -8,22 +8,9 @@ import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 
 public class TextureMapObjectRenderer extends OrthogonalTiledMapRenderer {
 
-    public TextureMapObjectRenderer(TiledMap map) {
-        super(map);
-    }
-
     public TextureMapObjectRenderer(TiledMap map, Batch batch) {
         super(map, batch);
     }
-
-    public TextureMapObjectRenderer(TiledMap map, float unitScale) {
-        super(map, unitScale);
-    }
-
-    public TextureMapObjectRenderer(TiledMap map, float unitScale, Batch batch) {
-        super(map, unitScale, batch);
-    }
-
     @Override
     public void renderObject(MapObject object) {
         if (object instanceof TextureMapObject) {

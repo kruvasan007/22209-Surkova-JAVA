@@ -42,7 +42,7 @@ public class World {
         }
         getMapProperties();
 
-        miniMap = new MiniMap(tiledMap, mapPixelWidth, mapPixelHeight);
+        miniMap = new MiniMap(tiledMap);
     }
 
     public ArrayList<Integer> getAllowedTiles() {

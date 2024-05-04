@@ -1,0 +1,25 @@
+{
+  animName: "Player",
+  animations: [
+    {
+      "name": "wait",
+      "countFrames": 6
+    },
+    {
+      "name": "walk",
+      "countFrames": 8
+    },
+    {
+      "name": "talk",
+      "countFrames": 7
+    },
+    {
+      "name": "run",
+      "countFrames": 8
+    },
+    {
+      "name": "punch",
+      "countFrames": 6
+    }
+  ]
+}

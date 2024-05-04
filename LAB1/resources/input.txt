@@ -1,5 +1,0 @@
-PUSH 4
-POP a
-PUSH a
-SQRT
-PRINT

@@ -28,11 +28,10 @@ public class Torrent implements Runnable {
     private RandomAccessFile dataFile;
     private final ConcurrentLinkedQueue<PeerMessage> messages = new ConcurrentLinkedQueue<>();
     private final String peerId;
-    private final HashMap<Integer, Peer> peers = new HashMap<>();
     private BitSet downloadPieces = null;
     private boolean isRunning = true;
     private final int port = 6881;
-    private int maxPeersCount = 80;
+    private Connection connection;
     private int uploaded = 0;
     private Long needToDownload = 0L;
     private Long downloaded = 0L;
@@ -110,13 +109,13 @@ public class Torrent implements Runnable {
             while (isRunning) {
                 processingMessagesPull();
                 sendRequests();
-
                 try {
-                    Thread.sleep(350);
+                    Thread.sleep(150);
                 } catch (InterruptedException e) {
                     logger.logError("Thread sleep error " + e.getMessage());
                 }
             }
+
         } catch (Exception e) {
             logger.logError(e.getMessage());
             e.printStackTrace();
@@ -131,44 +130,37 @@ public class Torrent implements Runnable {
             } catch (Exception e) {
                 logger.logError("Tracker stop error " + e.getMessage());
             }
-            logger.logInfo("Download complete!");
+            if (needToDownload == 0) {
+                logger.logInfo("Download complete!");
+            } else {
+                logger.logError("Not complete :(");
+            }
 
-            for (Peer pr : peers.values()) {
-                pr.getPeerConnection().shutdown();
+            for (Peer pr : connection.getPeers().values()) {
+                pr.shutdown();
             }
         }
     }
 
     private void connectToPeers(TreeMap<ByteBuffer, Object> trackerResponse) {
         var peersConf = decodeCompressedPeers(((ByteBuffer) trackerResponse.get(TrackerConnection.PEERS)));
-
+        connection = new Connection(peersConf, this, ByteBuffer.wrap(peerId.getBytes()), header.getInfoHash());
+        (new Thread(connection)).start();
         logger.logInfo("Count of available peers: " + peersConf.size());
-
-        for (PeerConfig peerConfig : peersConf) {
-            PeerConnection connection = new PeerConnection(this, peerConfig.ip,
-                    peerConfig.port, ByteBuffer.wrap(peerId.getBytes()), maxPeersCount);
-            Peer pr = new Peer(connection);
-            connection.sendHandshake(header.getInfoHash(), ByteBuffer.wrap(peerId.getBytes()));
-            peers.put(maxPeersCount, pr);
-            (new Thread(connection)).start();
-            if (--maxPeersCount == 0)
-                break;
-        }
     }
 
     private void sendRequests() {
-        for (Peer p : peers.values()) {
+        for (Peer p : connection.getPeers().values()) {
             if (!p.handshook)
                 continue;
-            if (!p.choked && p.requestsQueue < 3) {
+            if (!p.choked && p.requestsQueue < 5) {
                 int index = choosePiece(p);
                 if (index == -1) continue;
                 Piece pc = pieces.get(index);
                 int chunk = pc.getNextChunk();
                 if (chunk != -1 && !downloadPieces.get(index)) {
                     p.requestsQueue++;
-                    p.getPeerConnection()
-                            .sendRequest(pc.getIndex(), pc.getBeginOfChunk(chunk), pc.getChunkSize(chunk));
+                    p.sendRequest(pc.getIndex(), pc.getBeginOfChunk(chunk), pc.getChunkSize(chunk));
                 }
             }
         }
@@ -176,8 +168,8 @@ public class Torrent implements Runnable {
 
     private void unchokePeers() {
         int i = MAX_UNCHOKED;
-        for (Peer peer : peers.values()) {
-            peer.getPeerConnection().sendUnchoke();
+        for (Peer peer : connection.getPeers().values()) {
+            peer.sendUnchoke();
             peer.choking = false;
             if (--i == 0) break;
         }
@@ -205,7 +197,7 @@ public class Torrent implements Runnable {
     public void processingMessagesPull() {
         PeerMessage msg;
         while ((msg = messages.poll()) != null) {
-            handleMessage(peers.get(msg.getConnectionId()), msg);
+            handleMessage(connection.getPeers().get(msg.getConnectionId()), msg);
         }
     }
 
@@ -255,7 +247,7 @@ public class Torrent implements Runnable {
                             + " HAS PIECE " + msg.getIndex());
                     if (!downloadPieces.get(msg.getIndex())) {
                         pr.ourInterested = true;
-                        pr.getPeerConnection().sendInterested();
+                        pr.sendInterested();
                     }
                 }
                 case Bitfield -> {
@@ -265,10 +257,10 @@ public class Torrent implements Runnable {
                     tmp.flip(0, downloadPieces.size());
                     if (!tmp.intersects(pr.getAvailablePieces())) {
                         pr.ourInterested = false;
-                        pr.getPeerConnection().sendNotInterested();
+                        pr.sendNotInterested();
                     } else {
                         pr.ourInterested = true;
-                        pr.getPeerConnection().sendInterested();
+                        pr.sendInterested();
                     }
                 }
                 case Request -> {
@@ -283,7 +275,7 @@ public class Torrent implements Runnable {
                                 logger.logError("Error read data file");
                             }
                         }
-                        pr.getPeerConnection().sendPiece(msg.getIndex(), msg.getBegin(), msg.getLength(), ByteBuffer.wrap(array));
+                        pr.sendPiece(msg.getIndex(), msg.getBegin(), msg.getLength(), ByteBuffer.wrap(array));
                         uploaded += msg.getLength();
                     }
                 }
@@ -301,7 +293,7 @@ public class Torrent implements Runnable {
                     if (chunk == -1 && pc.allChunkIsLoaded() && !downloadPieces.get(msg.getIndex())) {
                         putPiece(pc);
                     } else {
-                        pr.getPeerConnection().sendRequest(pc.getIndex(), pc.getBeginOfChunk(chunk), pc.getChunkSize(chunk));
+                        pr.sendRequest(pc.getIndex(), pc.getBeginOfChunk(chunk), pc.getChunkSize(chunk));
                     }
                 }
                 default -> {
@@ -313,18 +305,18 @@ public class Torrent implements Runnable {
     private void checkHandshake(PeerMessage msg, Peer pr) {
         ByteBuffer message = msg.getBytes();
         if (message.get() != 19 || message.slice().limit(19).compareTo(ByteBuffer.wrap(ConnectionTags.PROTOCOL_HEADER)) != 0) {
-            pr.getPeerConnection().shutdown();
+            pr.shutdown();
             return;
         }
 
         if (message.slice().position(19 + 8).limit(20).compareTo(header.getInfoHash()) != 0) {
-            pr.getPeerConnection().shutdown();
+            pr.shutdown();
             return;
         }
 
         ByteBuffer bf = getBitField();
         if (bf != null) {
-            pr.getPeerConnection().sendBitfield(bf);
+            pr.sendBitfield(bf);
         }
         pr.handshook = true;
     }
@@ -339,38 +331,36 @@ public class Torrent implements Runnable {
             logger.logError("Error getting piece's SHA");
         }
 
-        synchronized (peers) {
-            synchronized (dataFile) {
-                if (Arrays.equals(sha1, piece.getHash())) {
-                    downloadPieces.set(piece.getIndex());
-                    piece.setState(Piece.PieceState.DOWNLOAD);
+        synchronized (dataFile) {
+            if (Arrays.equals(sha1, piece.getHash())) {
+                downloadPieces.set(piece.getIndex());
+                piece.setState(Piece.PieceState.DOWNLOAD);
 
-                    try {
-                        dataFile.seek((long) piece.getIndex() * header.getPieceLength());
-                        dataFile.write(piece.getByteBuffer().array());
-                    } catch (IOException e) {
-                        logger.logError("Data file write error");
-                    }
-
-                    for (Peer p : peers.values()) {
-                        p.getPeerConnection().sendHave(piece.getIndex());
-
-                        BitSet tmp = ((BitSet) downloadPieces.clone());
-                        tmp.flip(0, downloadPieces.size());
-                        if (!tmp.intersects(p.getAvailablePieces())) {
-                            p.ourInterested = false;
-                            p.getPeerConnection().sendNotInterested();
-                        }
-                    }
-                    downloaded += piece.getSize();
-                    needToDownload -= piece.getSize();
-                    logger.logInfo(100 * downloaded / header.getFileLength() + "% download");
-                    observer.onNotified();
-                } else {
-                    piece.clearSlices();
-                    piece.setState(Piece.PieceState.WAIT);
-                    return;
+                try {
+                    dataFile.seek((long) piece.getIndex() * header.getPieceLength());
+                    dataFile.write(piece.getByteBuffer().array());
+                } catch (IOException e) {
+                    logger.logError("Data file write error");
                 }
+
+                for (Peer p : connection.getPeers().values()) {
+                    p.sendHave(piece.getIndex());
+
+                    BitSet tmp = ((BitSet) downloadPieces.clone());
+                    tmp.flip(0, downloadPieces.size());
+                    if (!tmp.intersects(p.getAvailablePieces())) {
+                        p.ourInterested = false;
+                        p.sendNotInterested();
+                    }
+                }
+                downloaded += piece.getSize();
+                needToDownload -= piece.getSize();
+                logger.logInfo(100 * downloaded / header.getFileLength() + "% download");
+                observer.onNotified();
+            } else {
+                piece.clearSlices();
+                piece.setState(Piece.PieceState.WAIT);
+                return;
             }
         }
 
@@ -448,21 +438,16 @@ public class Torrent implements Runnable {
         messages.add(message);
     }
 
-    public void peerDying(Integer id) {
-        peers.remove(id);
-        logger.logInfo("Peer " + id + " died :(; Peers alive now: " + peers.size());
-        observer.onNotified();
-    }
-
     public double getProgress() {
         return (double) downloaded / header.getFileLength();
     }
 
     public int getAlivePeers() {
-        return peers.size();
+        return connection.getPeers().size();
     }
 
     public void stop() {
         isRunning = false;
+        connection.shutdown();
     }
 }

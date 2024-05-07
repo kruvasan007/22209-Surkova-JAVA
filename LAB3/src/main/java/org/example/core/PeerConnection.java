@@ -49,7 +49,7 @@ public class PeerConnection implements Runnable {
             try {
                 sock.connect(address, PEER_CONNECTION_TIMEOUT);
             } catch (IOException e) {
-                torrent.peerDying(connectionId);
+                //torrent.peerDying(connectionId);
             }
             if (!sock.isConnected()) return;
 

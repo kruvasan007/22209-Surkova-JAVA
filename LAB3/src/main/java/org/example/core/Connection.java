@@ -1,49 +1,89 @@
 package org.example.core;
 
-import org.example.ThreadPool.ReaderThreadPool;
+import org.example.ThreadPool.ReadTask;
 import org.example.models.PeerConfig;
+import org.example.util.ColorLogger;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class Connection implements Runnable {
-    private final HashMap<Integer, Peer> peers = new HashMap<>();
-    private int maxPeersCount = 80;
-    private final ByteBuffer infoHash;
-    private boolean running = true;
-    private final ByteBuffer peerId;
-    private final ReaderThreadPool reader;
-    private Selector selector;
-    private final ArrayList<PeerConfig> peersConfig;
-    private final ArrayList<SocketChannel> channelArrayList = new ArrayList<>();
 
+    private int MAX_PEER_COUNT = 80;
+    private int COUNT_THREAD_FOR_PARSING = 6;
+
+    private final HashMap<Integer, Peer> peers = new HashMap<>();
+    private final ArrayList<PeerConfig> peersConfig;
+
+    private final ByteBuffer peerId;
+    private final ByteBuffer infoHash;
     private final Torrent torrent;
 
-    public Connection(ArrayList<PeerConfig> config, Torrent t, ByteBuffer peerId, ByteBuffer iH) {
+    private int welcomePort;
+    private boolean running = false;
+    private final ThreadPoolExecutor executor;
+    private Selector selector;
+    private final ArrayList<SocketChannel> channelArrayList = new ArrayList<>();
+
+    private final ColorLogger logger = new ColorLogger();
+
+    public boolean isRunning() {
+        return running;
+    }
+
+    public Connection(ArrayList<PeerConfig> config, Torrent t, ByteBuffer peerId, ByteBuffer iH, int port) {
         peersConfig = config;
-        reader = new ReaderThreadPool();
+
+        /* FOR LOCAL TEST */
+
+        var local = new PeerConfig();
+        local.port = 6791;
+        local.ip = "192.168.0.10";
+        peersConfig.add(local);
+
+        /* FOR LOCAL TEST */
+
+        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(COUNT_THREAD_FOR_PARSING);
         infoHash = iH;
         this.peerId = peerId;
         torrent = t;
+        welcomePort = port;
+        try {
+            logger.logInfo("Port : " + welcomePort + " " + InetAddress.getLocalHost());
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void shutdown() {
         running = false;
-        reader.interrupt();
-        for (Peer p : peers.values()) {
-            p.shutdown();
+        for (SelectionKey key : selector.selectedKeys()) {
+            try {
+                key.channel().close();
+            } catch (IOException e) {
+                logger.logError("Error close channel");
+            }
+            key.cancel();
         }
     }
 
-    public synchronized HashMap<Integer, Peer> getPeers() {
+    public HashMap<Integer, Peer> getPeers() {
         return peers;
     }
 
@@ -56,21 +96,22 @@ public class Connection implements Runnable {
         }
 
         for (PeerConfig peerConfig : peersConfig) {
-
             InetSocketAddress address = new InetSocketAddress(peerConfig.ip, peerConfig.port);
-
             try {
-                doConnect(address, maxPeersCount);
+                doConnect(address, MAX_PEER_COUNT);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-            if (--maxPeersCount == 0)
+            if (--MAX_PEER_COUNT == 0)
                 break;
         }
 
-        reader.start();
-
+        try {
+            createSocketForExternalConnections();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        running = true;
         while (running) {
             int numReadyChannels = 0;
             try {
@@ -87,58 +128,102 @@ public class Connection implements Runnable {
                 SelectionKey key = it.next();
                 it.remove();
 
-                Peer peer = (Peer) key.attachment();
-                SocketChannel sc = (SocketChannel) key.channel();
-                if (sc.isConnected()) {
-                    if (key.isWritable()) {
-                        if (peer.handleWrite() == -1) {
-                            (new Thread(() -> {
-                                try {
-                                    doConnect(peer.getAddress(), peer.getConnectionId());
-                                } catch (IOException e) {
-                                    System.out.println("Cannot reconnect");
-                                }
-                            })).start();
-                            continue;
-                        }
+
+                if (key.isAcceptable()) {
+                    logger.logInfo("Try to connect");
+                    if (MAX_PEER_COUNT > 0) {
+                        (new Thread(() -> reconnect(key))).start();
                     }
-                    if (key.isReadable()) {
-                        if (peer.handleRead() == -1) {
-                            (new Thread(() -> {
-                                try {
-                                    doConnect(peer.getAddress(), peer.getConnectionId());
-                                } catch (IOException e) {
-                                    System.out.println("Cannot reconnect");
-                                }
-                            })).start();
+                    continue;
+                } else if (key.isConnectable()) {
+                    SocketChannel sc = (SocketChannel) key.channel();
+                    if (!sc.isConnected()) {
+                        try {
+                            sc.finishConnect();
+                        } catch (IOException e) {
+                            logger.logError("Error connected " + key.attachment());
                         }
                     }
                 }
-            }
-            try {
-                Thread.sleep(25);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+
+                SocketChannel sc = (SocketChannel) key.channel();
+                if (sc.isConnected()) {
+                    Peer peer = (Peer) key.attachment();
+                    if (key.isWritable()) {
+                        peer.handleWrite(sc);
+                    }
+                    if (key.isReadable()) {
+                        int flagRead = peer.handleRead(sc);
+                        if (flagRead == -1) {
+                            shutdownChanel(sc, key);
+                        } else if (flagRead > 0) {
+                            executor.execute(new ReadTask(torrent, peer, peerId));
+                        }
+                    }
+                }
             }
         }
     }
 
     private void doConnect(InetSocketAddress addressToConnect, int connectionId) throws IOException {
         SocketChannel channel = SocketChannel.open();
-        channel.socket().connect(addressToConnect, 250);
-        if (channel.isConnected()) {
-            System.out.println("Connected peer " + addressToConnect);
-            channel.configureBlocking(false);
-            SelectionKey k = channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-            Peer pr = new Peer(channel, k, addressToConnect, connectionId, reader, torrent, peerId);
-            pr.sendHandshake(infoHash, peerId);
-            k.attach(pr);
+        Peer pr = new Peer(connectionId);
+
+        channel.configureBlocking(false);
+        channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE | SelectionKey.OP_CONNECT, pr);
+        channel.connect(addressToConnect);
+
+        pr.sendHandshake(infoHash, peerId);
+
+        synchronized (peers) {
             if (peers.containsKey(connectionId)) {
                 peers.replace(connectionId, pr);
             } else {
                 peers.put(connectionId, pr);
             }
-            channelArrayList.add(channel);
+        }
+        channelArrayList.add(channel);
+    }
+
+    private void createSocketForExternalConnections() throws IOException {
+        ServerSocketChannel ssc = ServerSocketChannel.open();
+        ServerSocket ss = ssc.socket();
+        ss.bind(new InetSocketAddress(welcomePort));
+        ss.setReuseAddress(true);
+        ssc.configureBlocking(false);
+        SelectionKey selectionKey = ssc.register(selector, SelectionKey.OP_ACCEPT);
+        selectionKey.interestOps(SelectionKey.OP_ACCEPT);
+    }
+
+    private void shutdownChanel(SocketChannel channel, SelectionKey key) {
+        try {
+            channel.close();
+            key.cancel();
+        } catch (IOException e) {
+            logger.logError("Error shutdown");
+        }
+    }
+
+    private void reconnect(SelectionKey key) {
+        try {
+            SocketChannel sc = ((ServerSocketChannel) key.channel()).accept();
+
+            sc.configureBlocking(false);
+            Peer pr = new Peer(--MAX_PEER_COUNT);
+            sc.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, pr);
+
+            pr.sendHandshake(infoHash, peerId);
+            pr.sendUnchoke();
+            pr.sendBitfield(torrent.getBitField());
+
+            if (peers.containsKey(MAX_PEER_COUNT)) {
+                peers.replace(MAX_PEER_COUNT, pr);
+            } else {
+                peers.put(MAX_PEER_COUNT, pr);
+            }
+            channelArrayList.add(sc);
+        } catch (IOException e) {
+            logger.logError("Cannot accept connection");
         }
     }
 }

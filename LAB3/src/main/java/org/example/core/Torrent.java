@@ -10,16 +10,20 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.Socket;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 
 public class Torrent implements Runnable {
     private static final int MAX_UNCHOKED = 5;
+    private static final int SIZE_PEES_CONFIG = 6;
     private org.example.util.Observer observer;
     private final TrackerConnection tracker;
     private final TorrentHeader header;
@@ -30,7 +34,7 @@ public class Torrent implements Runnable {
     private final String peerId;
     private BitSet downloadPieces = null;
     private boolean isRunning = true;
-    private final int port = 6881;
+    private int port;
     private Connection connection;
     private int uploaded = 0;
     private Long needToDownload = 0L;
@@ -41,7 +45,8 @@ public class Torrent implements Runnable {
         header = head;
         tracker = new TrackerConnection(header.getAnnounceUrl());
         infoHashSHA1 = encodeInfoHash(header.getInfoHash());
-
+        var random = new Random();
+        port = 6789 + random.nextInt(20);
         peerId = generateId();
         pieces = generatePieces();
         needToDownload = head.getFileLength();
@@ -57,6 +62,7 @@ public class Torrent implements Runnable {
         } catch (FileNotFoundException e) {
             logger.logError("Error open data file " + e.getMessage());
         }
+
         checkDownloadedPieces();
     }
 
@@ -98,6 +104,13 @@ public class Torrent implements Runnable {
             var trackerResponse = tracker.start(peerId, port, uploaded, downloaded, header.getFileLength(), infoHashSHA1);
             connectToPeers(trackerResponse);
 
+            long minInterval = (Long) trackerResponse.get(TrackerConnection.MIN_INTERVAL) * 1000;
+            long interval = (Long) trackerResponse.get(TrackerConnection.INTERVAL) * 1000;
+            if (minInterval == 0)
+                minInterval = interval / 2;
+
+            long lastAnnounce = System.currentTimeMillis();
+
             var unchokeTimer = new Timer("Unchoke timer", true);
             unchokeTimer.schedule(new TimerTask() {
                 @Override
@@ -106,14 +119,22 @@ public class Torrent implements Runnable {
                 }
             }, 0, 60000);
 
-            while (isRunning) {
-                processingMessagesPull();
-                sendRequests();
-                try {
-                    Thread.sleep(150);
-                } catch (InterruptedException e) {
-                    logger.logError("Thread sleep error " + e.getMessage());
+            var requestTimer = new Timer("Request timer", true);
+            requestTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    Torrent.this.sendRequests();
                 }
+            }, 2000, 100);
+
+            while (isRunning) {
+                if ((System.currentTimeMillis() - lastAnnounce) >= (minInterval - 5000)) {
+                    logger.logInfo("Announce");
+                    tracker.announce(peerId, port, uploaded, downloaded, needToDownload, infoHashSHA1);
+                    lastAnnounce = System.currentTimeMillis();
+                }
+
+                processingMessagesPull();
             }
 
         } catch (Exception e) {
@@ -135,16 +156,15 @@ public class Torrent implements Runnable {
             } else {
                 logger.logError("Not complete :(");
             }
-
-            for (Peer pr : connection.getPeers().values()) {
+            /* for (Peer pr : connection.getPeers().values()) {
                 pr.shutdown();
-            }
+            } */
         }
     }
 
     private void connectToPeers(TreeMap<ByteBuffer, Object> trackerResponse) {
         var peersConf = decodeCompressedPeers(((ByteBuffer) trackerResponse.get(TrackerConnection.PEERS)));
-        connection = new Connection(peersConf, this, ByteBuffer.wrap(peerId.getBytes()), header.getInfoHash());
+        connection = new Connection(peersConf, this, ByteBuffer.wrap(peerId.getBytes()), header.getInfoHash(), port);
         (new Thread(connection)).start();
         logger.logInfo("Count of available peers: " + peersConf.size());
     }
@@ -194,13 +214,6 @@ public class Torrent implements Runnable {
         return pieceRanks[random.nextInt(j)];
     }
 
-    public void processingMessagesPull() {
-        PeerMessage msg;
-        while ((msg = messages.poll()) != null) {
-            handleMessage(connection.getPeers().get(msg.getConnectionId()), msg);
-        }
-    }
-
     public ByteBuffer getBitField() {
         synchronized (dataFile) {
             byte[] bf = new byte[(pieces.size() + 8 - 1) / 8];
@@ -219,8 +232,16 @@ public class Torrent implements Runnable {
         }
     }
 
+    public void processingMessagesPull() {
+        PeerMessage msg;
+        while ((msg = messages.poll()) != null) {
+            handleMessage(connection.getPeers().get(msg.getConnectionId()), msg);
+        }
+    }
+
     private void handleMessage(Peer pr, PeerMessage msg) {
         if (!pr.handshook && msg.getType() == MessageType.Handshake) {
+            logger.logInfo("Get handshook");
             checkHandshake(msg, pr);
         } else {
             switch (msg.getType()) {
@@ -265,19 +286,17 @@ public class Torrent implements Runnable {
                 }
                 case Request -> {
                     logger.logInfo("REQUEST Message" + msg.getConnectionId());
-                    if (!pr.choking) {
-                        var array = new byte[msg.getLength()];
-                        synchronized (dataFile) {
-                            try {
-                                dataFile.seek((long) msg.getIndex() * header.getPieceLength() + msg.getBegin());
-                                dataFile.read(array);
-                            } catch (IOException e) {
-                                logger.logError("Error read data file");
-                            }
+                    var array = new byte[msg.getLength()];
+                    synchronized (dataFile) {
+                        try {
+                            dataFile.seek((long) msg.getIndex() * header.getPieceLength() + msg.getBegin());
+                            dataFile.read(array);
+                        } catch (IOException e) {
+                            logger.logError("Error read data file");
                         }
-                        pr.sendPiece(msg.getIndex(), msg.getBegin(), msg.getLength(), ByteBuffer.wrap(array));
-                        uploaded += msg.getLength();
                     }
+                    pr.sendPiece(msg.getIndex(), msg.getBegin(), msg.getLength(), ByteBuffer.wrap(array));
+                    uploaded += msg.getLength();
                 }
                 case Piece -> {
                     Piece pc = pieces.get(msg.getIndex());
@@ -303,14 +322,13 @@ public class Torrent implements Runnable {
     }
 
     private void checkHandshake(PeerMessage msg, Peer pr) {
+        System.out.println("read handshake");
         ByteBuffer message = msg.getBytes();
         if (message.get() != 19 || message.slice().limit(19).compareTo(ByteBuffer.wrap(ConnectionTags.PROTOCOL_HEADER)) != 0) {
-            pr.shutdown();
             return;
         }
 
         if (message.slice().position(19 + 8).limit(20).compareTo(header.getInfoHash()) != 0) {
-            pr.shutdown();
             return;
         }
 
@@ -355,7 +373,7 @@ public class Torrent implements Runnable {
                 }
                 downloaded += piece.getSize();
                 needToDownload -= piece.getSize();
-                logger.logInfo(100 * downloaded / header.getFileLength() + "% download");
+                logger.logInfo(100 * downloaded / (downloaded + needToDownload) + "% download");
                 observer.onNotified();
             } else {
                 piece.clearSlices();
@@ -365,7 +383,7 @@ public class Torrent implements Runnable {
         }
 
         if (downloadPieces.nextClearBit(0) == pieces.size() && isRunning) {
-            isRunning = false;
+            //isRunning = false;
             try {
                 tracker.complete(peerId, port, uploaded, downloaded, needToDownload, infoHashSHA1);
             } catch (Exception e) {
@@ -399,7 +417,7 @@ public class Torrent implements Runnable {
     public ArrayList<PeerConfig> decodeCompressedPeers(ByteBuffer peers) {
         ArrayList<PeerConfig> peerConfList = new ArrayList<>();
         try {
-            for (int i = 0; i < peers.array().length / 6; i++) {
+            for (int i = 0; i < peers.array().length / SIZE_PEES_CONFIG; i++) {
                 var peerConf = new PeerConfig();
                 var b0 = peers.get();
                 var b1 = peers.get();

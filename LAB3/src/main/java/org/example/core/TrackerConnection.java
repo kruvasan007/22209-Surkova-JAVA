@@ -11,6 +11,8 @@ import java.nio.ByteBuffer;
 import java.util.TreeMap;
 
 public class TrackerConnection {
+    public static final ByteBuffer MIN_INTERVAL = ByteBuffer.wrap(new byte[] {'m','i','n',' ','i','n','t','e','r','v','a','l'});
+    public static final ByteBuffer INTERVAL = ByteBuffer.wrap(new byte[] {'i','n','t','e','r','v','a','l'});
     public static final ByteBuffer PEERS = ByteBuffer.wrap(new byte[]{'p', 'e', 'e', 'r', 's'});
     private final URL trackerURL;
     private final Encoder encoder = new Encoder();

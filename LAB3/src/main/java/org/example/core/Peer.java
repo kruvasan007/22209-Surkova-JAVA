@@ -1,52 +1,41 @@
 package org.example.core;
 
-import org.example.ThreadPool.ReadTask;
-import org.example.ThreadPool.ReaderThreadPool;
 import org.example.models.ConnectionTags;
 import org.example.util.ColorLogger;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.BitSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Peer {
-    private final InetSocketAddress address;
-    public boolean handshook = false;
+    private final int BUFFER_CAPACITY = 2 << 24;
     private final ColorLogger logger = new ColorLogger();
-    ByteBuffer bufferIn;
-    ByteBuffer bufferOut;
-    private boolean isLock = false;
+    public boolean handshook = false;
     public boolean interested = false;
+    private boolean isLock = false;
     public boolean ourInterested = false;
     public boolean choked = true;
     public boolean choking = true;
-    public int requestsQueue;
-    private final ByteBuffer peedId;
-    private final SocketChannel channel;
-    private final SelectionKey key;
+
     private final int connectionId;
-    private final ReaderThreadPool reader;
-    private final byte[] buffIn = new byte[2 << 14];
-    private final Torrent torrent;
+    public int requestsQueue;
     private BitSet availablePieces = new BitSet();
     private final ConcurrentLinkedQueue<ByteBuffer> messages = new ConcurrentLinkedQueue<>();
 
-    public Peer(SocketChannel socket, SelectionKey key, InetSocketAddress addressToConnect, int connectionId, ReaderThreadPool reader, Torrent t, ByteBuffer peedId) {
-        this.channel = socket;
-        this.key = key;
-        this.connectionId = connectionId;
-        this.address = addressToConnect;
-        this.reader = reader;
-        this.torrent = t;
-        this.peedId = peedId;
-        requestsQueue = 0;
+    private final ByteBuffer bufferIn;
+    private final ReadWriteLock lock;
+    private final byte[] buffIn = new byte[BUFFER_CAPACITY];
 
+
+    public Peer(int connectionId) {
+        this.connectionId = connectionId;
+        requestsQueue = 0;
+        lock = new ReentrantReadWriteLock();
         bufferIn = ByteBuffer.wrap(buffIn);
-        bufferOut = ByteBuffer.allocate(1024);
     }
 
     public byte[] getBuff() {
@@ -123,15 +112,6 @@ public class Peer {
         sendMessage(msg);
     }
 
-    public void shutdown() {
-        try {
-            channel.close();
-            key.cancel();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public void sendHandshake(ByteBuffer infoHash, ByteBuffer peerId) {
         ByteBuffer handshake = ByteBuffer.allocate(68);
         infoHash.position(0);
@@ -149,29 +129,35 @@ public class Peer {
         sendMessage(handshake);
     }
 
-    public int handleRead() {
-        int readCount;
-        byte[] tbuf;
-        try {
-            tbuf = new byte[1024];
-            readCount = channel.read(ByteBuffer.wrap(tbuf));
-        } catch (IOException e) {
-            shutdown();
-            logger.logError("Shutdown read");
-            return -1;
-        }
-        if (readCount > 0) {
-            bufferIn.put(tbuf, 0, readCount);
-            if (!isLock) {
-                reader.execute(new ReadTask(torrent, bufferIn, peedId, this));
-            }
-            return readCount;
-        } else {
-            return 0;
-        }
+    public ByteBuffer getInputBuffer() {
+        return bufferIn;
     }
 
-    public int handleWrite() {
+    public int handleRead(SocketChannel channel) {
+        lock.readLock().lock();
+        try {
+            int readCount;
+            byte[] tbuf;
+            try {
+                tbuf = new byte[1024];
+                readCount = channel.read(ByteBuffer.wrap(tbuf));
+            } catch (IOException e) {
+                logger.logError("Shutdown read " + connectionId);
+                return -1;
+            }
+
+            if (readCount > 0) {
+                bufferIn.put(tbuf, 0, readCount);
+                return readCount;
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+
+        return 0;
+    }
+
+    public int handleWrite(SocketChannel channel) {
         ByteBuffer msg = messages.poll();
         int r = 0;
         if (msg != null) {
@@ -181,23 +167,15 @@ public class Peer {
                 r = channel.write(ByteBuffer.wrap(msgArr));
                 msg.clear();
             } catch (IOException e) {
-                shutdown();
-                logger.logError("Shutdown write");
+                logger.logError("Shutdown write " + connectionId);
                 return -1;
             }
         }
         return r;
     }
 
-    public void lock() {
-        isLock = true;
+    public ReadWriteLock getLock() {
+        return lock;
     }
 
-    public void unlock() {
-        isLock = false;
-    }
-
-    public InetSocketAddress getAddress() {
-        return address;
-    }
 }

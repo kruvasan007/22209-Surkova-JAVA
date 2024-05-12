@@ -20,7 +20,6 @@ public class View extends JFrame implements Observer {
         createWelcomeView();
     }
 
-
     private void createWelcomeView() {
         JPanel panel = new JPanel() {
             @Override
@@ -56,7 +55,7 @@ public class View extends JFrame implements Observer {
     }
 
     private void createMainView() {
-        //controller.startTorrentProcess("C:\\Users\\Anastasia\\OneDrive\\Рабочий стол\\torrent\\Atencio L. Атенсио Л. - Функциональное программирование на JavaScript. Как улучшить код JavaScript-программ [2018, PDF, RUS] [rutracker-5823944].torrent");
+        //controller.startTorrentProcess("C:\\Users\\Anastasia\\Downloads\\Торгашева Юлия - Учимся создавать игры на Scratch. Программирование для детей [2018, PDF, RUS] [rutracker-5690209].torrent");
         JLabel torrentName = new JLabel(controller.getTorrentFileName());
         JLabel alivePeers = new JLabel("Alive peers now: " + alivePeersText);
         JButton stopButton = new JButton("Stop");

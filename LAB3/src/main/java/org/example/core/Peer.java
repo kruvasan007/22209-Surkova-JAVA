@@ -12,34 +12,29 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Peer {
-    private final int BUFFER_CAPACITY = 2 << 24;
+    private static final int HANDSHAKE_SIZE = 68;
+    private int msgLen = -1;
+    private final int BUFFER_CAPACITY = 2 << 14;
     private final ColorLogger logger = new ColorLogger();
     public boolean handshook = false;
     public boolean interested = false;
-    private boolean isLock = false;
     public boolean ourInterested = false;
     public boolean choked = true;
     public boolean choking = true;
-
     private final int connectionId;
     public int requestsQueue;
     private BitSet availablePieces = new BitSet();
     private final ConcurrentLinkedQueue<ByteBuffer> messages = new ConcurrentLinkedQueue<>();
 
-    private final ByteBuffer bufferIn;
-    private final ReadWriteLock lock;
-    private final byte[] buffIn = new byte[BUFFER_CAPACITY];
+
+    private int readCount = 0;
+    private ByteBuffer lenBuf = ByteBuffer.allocate(4);
+    private ByteBuffer msgBuf;
 
 
     public Peer(int connectionId) {
         this.connectionId = connectionId;
         requestsQueue = 0;
-        lock = new ReentrantReadWriteLock();
-        bufferIn = ByteBuffer.wrap(buffIn);
-    }
-
-    public byte[] getBuff() {
-        return buffIn;
     }
 
     public void setAvailablePieces(BitSet availablePieces) {
@@ -129,32 +124,68 @@ public class Peer {
         sendMessage(handshake);
     }
 
-    public ByteBuffer getInputBuffer() {
-        return bufferIn;
+    public ByteBuffer getBuffer() {
+        return msgBuf;
     }
 
     public int handleRead(SocketChannel channel) {
-        lock.readLock().lock();
-        try {
-            int readCount;
-            byte[] tbuf;
+        if (!handshook) return receiveHandshake(channel);
+
+        if (msgLen == -1) {
             try {
-                tbuf = new byte[1024];
-                readCount = channel.read(ByteBuffer.wrap(tbuf));
+                readCount += channel.read(lenBuf);
             } catch (IOException e) {
                 logger.logError("Shutdown read " + connectionId);
                 return -1;
             }
 
-            if (readCount > 0) {
-                bufferIn.put(tbuf, 0, readCount);
-                return readCount;
+            if (readCount != 4) {
+                return 0;
             }
-        } finally {
-            lock.readLock().unlock();
+
+            lenBuf.flip();
+            msgLen = lenBuf.getInt();
+
+            msgBuf = ByteBuffer.allocate(msgLen + 4);
+            msgBuf.put(lenBuf.array(), 0, 4);
+            readCount = 0;
         }
 
-        return 0;
+        try {
+            readCount += channel.read(msgBuf);
+        } catch (IOException e) {
+            logger.logError("Shutdown read " + connectionId);
+            return -1;
+        }
+
+        if (readCount != msgLen) {
+            return 0;
+        }
+
+        lenBuf.clear();
+        msgLen = -1;
+        int toSend = readCount;
+        readCount = 0;
+        return toSend;
+    }
+
+    private int receiveHandshake(SocketChannel channel) {
+        if (readCount == 0)
+            msgBuf = ByteBuffer.allocate(HANDSHAKE_SIZE);
+
+        try {
+            readCount += channel.read(msgBuf);
+        } catch (IOException e) {
+            logger.logError("Shutdown read " + connectionId);
+            return -1;
+        }
+
+        if (readCount != HANDSHAKE_SIZE)
+            return 0;
+
+        int toSend = readCount;
+        readCount = 0;
+        return toSend;
     }
 
     public int handleWrite(SocketChannel channel) {
@@ -174,8 +205,13 @@ public class Peer {
         return r;
     }
 
-    public ReadWriteLock getLock() {
-        return lock;
+    public boolean canGetPiece(int index) {
+        try {
+            return availablePieces.get(index);
+        } catch (IndexOutOfBoundsException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
 }

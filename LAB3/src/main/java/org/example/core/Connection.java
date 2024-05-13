@@ -18,15 +18,13 @@ import java.nio.channels.spi.SelectorProvider;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class Connection implements Runnable {
 
     private int MAX_PEER_COUNT = 80;
-    private int COUNT_THREAD_FOR_PARSING = 6;
+    private int COUNT_THREAD_FOR_PARSING = 8;
 
     private final HashMap<Integer, Peer> peers = new HashMap<>();
     private final ArrayList<PeerConfig> peersConfig;
@@ -43,17 +41,14 @@ public class Connection implements Runnable {
 
     private final ColorLogger logger = new ColorLogger();
 
-    public boolean isRunning() {
-        return running;
-    }
-
     public Connection(ArrayList<PeerConfig> config, Torrent t, ByteBuffer peerId, ByteBuffer iH, int port) {
         peersConfig = config;
 
         /* FOR LOCAL TEST */
 
+        // peersConfig.clear();
         var local = new PeerConfig();
-        local.port = 6791;
+        local.port = 6803;
         local.ip = "192.168.0.10";
         peersConfig.add(local);
 
@@ -128,7 +123,6 @@ public class Connection implements Runnable {
                 SelectionKey key = it.next();
                 it.remove();
 
-
                 if (key.isAcceptable()) {
                     logger.logInfo("Try to connect");
                     if (MAX_PEER_COUNT > 0) {
@@ -161,6 +155,12 @@ public class Connection implements Runnable {
                         }
                     }
                 }
+            }
+
+            try {
+                Thread.sleep(25);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
     }
@@ -210,17 +210,14 @@ public class Connection implements Runnable {
 
             sc.configureBlocking(false);
             Peer pr = new Peer(--MAX_PEER_COUNT);
-            sc.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, pr);
+            sc.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE | SelectionKey.OP_CONNECT, pr);
 
             pr.sendHandshake(infoHash, peerId);
             pr.sendUnchoke();
             pr.sendBitfield(torrent.getBitField());
 
-            if (peers.containsKey(MAX_PEER_COUNT)) {
-                peers.replace(MAX_PEER_COUNT, pr);
-            } else {
-                peers.put(MAX_PEER_COUNT, pr);
-            }
+            peers.put(MAX_PEER_COUNT, pr);
+
             channelArrayList.add(sc);
         } catch (IOException e) {
             logger.logError("Cannot accept connection");

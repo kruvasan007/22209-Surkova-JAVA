@@ -9,10 +9,8 @@ import java.nio.ByteBuffer;
 import java.util.BitSet;
 
 public class ReadTask implements Runnable {
-    private static final int ID_SIZE = 4;
     private final Torrent torrent;
-    private final ByteBuffer bufferForMessages;
-    private final byte[] rawBytes;
+    private final ByteBuffer msgBuf;
     private final ByteBuffer peerId;
     private final Peer peer;
     private final int connectionId;
@@ -20,50 +18,28 @@ public class ReadTask implements Runnable {
     public ReadTask(Torrent t, Peer peer, ByteBuffer pId) {
         torrent = t;
         this.peer = peer;
-        this.bufferForMessages = peer.getInputBuffer();
+        this.msgBuf = peer.getBuffer().duplicate();
+        msgBuf.flip();
         this.peerId = pId;
-        this.rawBytes = peer.getBuff();
         this.connectionId = peer.getConnectionId();
     }
 
     @Override
     public void run() {
-        peer.getLock().writeLock().lock();
         if (!peer.handshook) {
-            int ol = bufferForMessages.position();
-            bufferForMessages.position(68).flip();
-            ByteBuffer msgBuf = ByteBuffer.allocate(68);
-            msgBuf.put(bufferForMessages);
-            msgBuf.flip();
             msgBuf.position(0);
-            bufferForMessages.limit(ol);
-            bufferForMessages.compact();
-
             PeerMessage peerMessage = MessageConstructor.wrapHandshake(connectionId, peerId, msgBuf);
             if (peerMessage != null) {
                 torrent.receiveMessage(peerMessage);
             }
             peer.handshook = true;
         } else {
-            int messageLen = ByteBuffer.wrap(rawBytes).getInt() + ID_SIZE;
-            while (bufferForMessages.position() >= ID_SIZE && bufferForMessages.position() >= messageLen) {
-                int commonLen = bufferForMessages.position();
-                ByteBuffer msgBuf = ByteBuffer.allocate(messageLen);
-                bufferForMessages.position(messageLen).flip();
-                msgBuf.put(bufferForMessages);
-                msgBuf.flip();
-                bufferForMessages.limit(commonLen);
-                bufferForMessages.compact();
-
-                PeerMessage peerMessage = processMessage(msgBuf, connectionId);
-                if (peerMessage != null) {
-                    torrent.receiveMessage(peerMessage);
-                }
-
-                messageLen = ByteBuffer.wrap(rawBytes).getInt() + ID_SIZE;
+            PeerMessage peerMessage = processMessage(msgBuf, connectionId);
+            if (peerMessage != null) {
+                torrent.receiveMessage(peerMessage);
             }
+            peer.handshook = true;
         }
-        peer.getLock().writeLock().unlock();
     }
 
     private PeerMessage processMessage(ByteBuffer msg, int connectionId) {

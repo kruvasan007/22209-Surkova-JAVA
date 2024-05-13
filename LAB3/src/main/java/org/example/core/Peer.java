@@ -205,13 +205,4 @@ public class Peer {
         return r;
     }
 
-    public boolean canGetPiece(int index) {
-        try {
-            return availablePieces.get(index);
-        } catch (IndexOutOfBoundsException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
 }

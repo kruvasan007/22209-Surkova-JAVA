@@ -1,10 +1,10 @@
 package org.example.models;
 
-public class WritterConfig {
+public class FileManagerDataConfig {
     private long position;
     private byte[] data;
 
-    public WritterConfig(long pos, byte[] d) {
+    public FileManagerDataConfig(long pos, byte[] d) {
         data = d;
         position = pos;
     }

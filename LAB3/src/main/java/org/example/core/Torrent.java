@@ -3,7 +3,7 @@ package org.example.core;
 import org.example.models.ConnectionTags;
 import org.example.models.MessageType;
 import org.example.models.PeerConfig;
-import org.example.models.WritterConfig;
+import org.example.models.FileManagerDataConfig;
 import org.example.util.ColorLogger;
 import org.example.util.Observer;
 
@@ -31,7 +31,7 @@ public class Torrent implements Runnable {
     private int uploaded = 0;
     private Long needToDownload = 0L;
     private Long downloaded = 0L;
-    private final Writter writter;
+    private final FileManager fileManager;
     private final ColorLogger logger = new ColorLogger();
 
     public Torrent(TorrentHeader head, String fName, String path) {
@@ -44,8 +44,8 @@ public class Torrent implements Runnable {
         pieces = generatePieces();
         needToDownload = head.getFileLength();
 
-        writter = new Writter(fName, path);
-        needToDownload = writter.checkDownloadedPieces(pieces, head.getFileLength(), header.getPieceLength(), downloadPieces);
+        fileManager = new FileManager(fName, path);
+        needToDownload = fileManager.checkDownloadedPieces(pieces, head.getFileLength(), header.getPieceLength(), downloadPieces);
     }
 
     public void setObserver(Observer obrv) {
@@ -57,7 +57,7 @@ public class Torrent implements Runnable {
         try {
             var trackerResponse = tracker.start(peerId, port, uploaded, downloaded, header.getFileLength(), infoHashSHA1);
             connectToPeers(trackerResponse);
-            (new Thread(writter)).start();
+            (new Thread(fileManager)).start();
 
             long minInterval = (Long) trackerResponse.get(TrackerConnection.MIN_INTERVAL) * 1000;
             long interval = (Long) trackerResponse.get(TrackerConnection.INTERVAL) * 1000;
@@ -231,7 +231,7 @@ public class Torrent implements Runnable {
                 }
                 case Request -> {
                     logger.logInfo("REQUEST Message" + msg.getConnectionId());
-                    var array = writter.getData(msg.getLength(), (long) msg.getIndex() * header.getPieceLength() + msg.getBegin());
+                    var array = fileManager.getData(msg.getLength(), (long) msg.getIndex() * header.getPieceLength() + msg.getBegin());
 
                     pr.sendPiece(msg.getIndex(), msg.getBegin(), msg.getLength(), ByteBuffer.wrap(array));
                     uploaded += msg.getLength();
@@ -290,9 +290,9 @@ public class Torrent implements Runnable {
             downloadPieces.set(piece.getIndex());
             piece.setState(Piece.PieceState.DOWNLOAD);
 
-            var conf = new WritterConfig((long) piece.getIndex() * header.getPieceLength(),
+            var conf = new FileManagerDataConfig((long) piece.getIndex() * header.getPieceLength(),
                     piece.getByteBuffer().array());
-            writter.put(conf);
+            fileManager.put(conf);
 
             for (Peer p : connection.getPeers().values()) {
                 p.sendHave(piece.getIndex());
@@ -399,6 +399,7 @@ public class Torrent implements Runnable {
 
     public void stop() {
         isRunning = false;
+        fileManager.stop();
         connection.shutdown();
     }
 }

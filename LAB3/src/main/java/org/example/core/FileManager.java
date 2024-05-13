@@ -1,6 +1,6 @@
 package org.example.core;
 
-import org.example.models.WritterConfig;
+import org.example.models.FileManagerDataConfig;
 import org.example.util.ColorLogger;
 
 import java.io.File;
@@ -15,13 +15,13 @@ import java.util.BitSet;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 
-public class Writter implements Runnable {
+public class FileManager implements Runnable {
     private final ColorLogger logger = new ColorLogger();
     private RandomAccessFile dataFile;
-    private final LinkedBlockingQueue<WritterConfig> queue = new LinkedBlockingQueue<>();
+    private final LinkedBlockingQueue<FileManagerDataConfig> queue = new LinkedBlockingQueue<>();
     private boolean isRunning = true;
 
-    public Writter(String fName, String path) {
+    public FileManager(String fName, String path) {
         var newPath = path.split(Pattern.quote(File.separator));
         var len = newPath.length;
         newPath[len - 1] = fName;
@@ -89,7 +89,7 @@ public class Writter implements Runnable {
         }
     }
 
-    public void put(WritterConfig config) {
+    public void put(FileManagerDataConfig config) {
         try {
             queue.put(config);
         } catch (InterruptedException e) {

@@ -14,7 +14,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class Peer {
     private static final int HANDSHAKE_SIZE = 68;
     private int msgLen = -1;
-    private final int BUFFER_CAPACITY = 2 << 14;
     private final ColorLogger logger = new ColorLogger();
     public boolean handshook = false;
     public boolean interested = false;

@@ -80,7 +80,7 @@ public class Torrent implements Runnable {
                 public void run() {
                     Torrent.this.sendRequests();
                 }
-            }, 3000, 100);
+            }, 3000, 150);
 
             while (isRunning) {
                 if ((System.currentTimeMillis() - lastAnnounce) >= (minInterval - 5000)) {

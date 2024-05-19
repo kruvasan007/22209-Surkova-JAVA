@@ -48,7 +48,7 @@ public class Connection implements Runnable {
 
         // peersConfig.clear();
         var local = new PeerConfig();
-        local.port = 6803;
+        local.port = 6799;
         local.ip = "192.168.0.10";
         peersConfig.add(local);
 
@@ -151,16 +151,12 @@ public class Connection implements Runnable {
                         if (flagRead == -1) {
                             shutdownChanel(sc, key);
                         } else if (flagRead > 0) {
-                            executor.execute(new ReadTask(torrent, peer, peerId));
+                            byte[] msg = new byte[flagRead];
+                            System.arraycopy(peer.getBuffer().array(), 0, msg, 0, flagRead);
+                            executor.execute(new ReadTask(torrent, peer, msg, flagRead, peerId));
                         }
                     }
                 }
-            }
-
-            try {
-                Thread.sleep(25);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
             }
         }
     }

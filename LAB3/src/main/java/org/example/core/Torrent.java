@@ -80,7 +80,7 @@ public class Torrent implements Runnable {
                 public void run() {
                     Torrent.this.sendRequests();
                 }
-            }, 2000, 100);
+            }, 3000, 100);
 
             while (isRunning) {
                 if ((System.currentTimeMillis() - lastAnnounce) >= (minInterval - 5000)) {
@@ -261,6 +261,7 @@ public class Torrent implements Runnable {
 
     private void checkHandshake(PeerMessage msg, Peer pr) {
         ByteBuffer message = msg.getBytes();
+
         if (message.get() != 19 || message.slice().limit(19).compareTo(ByteBuffer.wrap(ConnectionTags.PROTOCOL_HEADER)) != 0) {
             return;
         }

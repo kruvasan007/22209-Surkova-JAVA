@@ -15,11 +15,12 @@ public class ReadTask implements Runnable {
     private final Peer peer;
     private final int connectionId;
 
-    public ReadTask(Torrent t, Peer peer, ByteBuffer pId) {
+    public ReadTask(Torrent t, Peer peer, byte[] msgBuf, int size, ByteBuffer pId) {
         torrent = t;
         this.peer = peer;
-        this.msgBuf = peer.getBuffer().duplicate();
-        msgBuf.flip();
+        this.msgBuf = ByteBuffer.allocate(size);
+        this.msgBuf.put(msgBuf);
+        this.msgBuf.position(0);
         this.peerId = pId;
         this.connectionId = peer.getConnectionId();
     }
@@ -27,13 +28,13 @@ public class ReadTask implements Runnable {
     @Override
     public void run() {
         if (!peer.handshook) {
-            msgBuf.position(0);
             PeerMessage peerMessage = MessageConstructor.wrapHandshake(connectionId, peerId, msgBuf);
             if (peerMessage != null) {
                 torrent.receiveMessage(peerMessage);
             }
             peer.handshook = true;
         } else {
+
             PeerMessage peerMessage = processMessage(msgBuf, connectionId);
             if (peerMessage != null) {
                 torrent.receiveMessage(peerMessage);
@@ -69,7 +70,9 @@ public class ReadTask implements Runnable {
                 BitSet pcs = new BitSet(messageLen * 8);
                 byte b = 0;
                 for (int j = 0; j < messageLen * 8; ++j) {
-                    if (j % 8 == 0) b = msg.get();
+                    if (j % 8 == 0){
+                        b = msg.get();
+                    }
                     pcs.set(j, ((b << (j % 8)) & 0x80) != 0);
                 }
                 return MessageConstructor.wrapBitfield(connectionId, peerId, pcs);

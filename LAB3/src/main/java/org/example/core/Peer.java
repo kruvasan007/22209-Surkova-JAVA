@@ -132,6 +132,7 @@ public class Peer {
         if (!handshook) return receiveHandshake(channel);
 
         if (msgLen == -1) {
+
             try {
                 readCount += channel.read(lenBuf);
             } catch (IOException e) {
@@ -162,9 +163,9 @@ public class Peer {
             return 0;
         }
 
-        lenBuf.clear();
+        lenBuf = ByteBuffer.allocate(4);
         msgLen = -1;
-        int toSend = readCount;
+        int toSend = readCount + 4;
         readCount = 0;
         return toSend;
     }
@@ -185,6 +186,7 @@ public class Peer {
 
         int toSend = readCount;
         readCount = 0;
+        handshook = true;
         return toSend;
     }
 

@@ -114,4 +114,9 @@ public class Piece {
     public boolean allChunkIsLoaded() {
         return loadingChunk.isEmpty();
     }
+
+    public void stopTimer(){
+        timeToLoad.purge();
+        timeToLoad.cancel();
+    }
 }

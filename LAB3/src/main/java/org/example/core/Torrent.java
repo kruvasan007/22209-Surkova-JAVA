@@ -29,6 +29,8 @@ public class Torrent implements Runnable {
     private final int port;
     private Connection connection;
     private int uploaded = 0;
+    private Timer requestTimer;
+    private Timer unchokeTimer;
     private Long needToDownload = 0L;
     private Long downloaded = 0L;
     private final FileManager fileManager;
@@ -66,7 +68,7 @@ public class Torrent implements Runnable {
 
             long lastAnnounce = System.currentTimeMillis();
 
-            var unchokeTimer = new Timer("Unchoke timer", true);
+            unchokeTimer = new Timer("Unchoke timer", true);
             unchokeTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
@@ -74,7 +76,7 @@ public class Torrent implements Runnable {
                 }
             }, 0, 60000);
 
-            var requestTimer = new Timer("Request timer", true);
+            requestTimer = new Timer("Request timer", true);
             requestTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
@@ -105,6 +107,9 @@ public class Torrent implements Runnable {
                 logger.logInfo("Download complete!");
             } else {
                 logger.logError("Not complete :(");
+            }
+            for (Piece piece : pieces){
+                piece.stopTimer();
             }
         }
     }
@@ -399,6 +404,10 @@ public class Torrent implements Runnable {
     }
 
     public void stop() {
+        requestTimer.purge();
+        requestTimer.cancel();
+        unchokeTimer.purge();
+        unchokeTimer.cancel();
         isRunning = false;
         fileManager.stop();
         connection.shutdown();

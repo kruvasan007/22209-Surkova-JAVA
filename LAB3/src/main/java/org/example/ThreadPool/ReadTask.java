@@ -15,11 +15,13 @@ public class ReadTask implements Runnable {
     private final Peer peer;
     private final int connectionId;
 
-    public ReadTask(Torrent t, Peer peer, byte[] msgBuf, int size, ByteBuffer pId) {
+    public ReadTask(Torrent t, Peer peer, int size, ByteBuffer pId) {
         torrent = t;
         this.peer = peer;
         this.msgBuf = ByteBuffer.allocate(size);
-        this.msgBuf.put(msgBuf);
+        byte[] msg = new byte[size];
+        System.arraycopy(peer.getBuffer().array(), 0, msg, 0, size);
+        this.msgBuf.put(msg);
         this.msgBuf.position(0);
         this.peerId = pId;
         this.connectionId = peer.getConnectionId();

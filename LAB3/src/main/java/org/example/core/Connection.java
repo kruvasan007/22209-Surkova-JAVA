@@ -65,6 +65,7 @@ public class Connection implements Runnable {
 
     public void shutdown() {
         running = false;
+        executor.shutdown();
         for (SelectionKey key : selector.selectedKeys()) {
             try {
                 key.channel().close();
@@ -72,6 +73,11 @@ public class Connection implements Runnable {
                 logger.logError("Error close channel");
             }
             key.cancel();
+        }
+        try {
+            selector.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -171,9 +177,7 @@ public class Connection implements Runnable {
                                 reconnect(peer, address);
                             }
                         } else if (flagRead > 0) {
-                            byte[] msg = new byte[flagRead];
-                            System.arraycopy(peer.getBuffer().array(), 0, msg, 0, flagRead);
-                            executor.execute(new ReadTask(torrent, peer, msg, flagRead, peerId));
+                            executor.execute(new ReadTask(torrent, peer, flagRead, peerId));
                         }
                     }
                 }

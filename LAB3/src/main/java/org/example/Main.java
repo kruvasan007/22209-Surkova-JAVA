@@ -10,6 +10,7 @@ public class Main {
         var controller = new Controller();
         SwingUtilities.invokeLater(() -> {
             JFrame view = new View(controller);
+            view.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             view.setSize(860,
                     520);
             view.setResizable(false);

@@ -6,6 +6,7 @@ import org.example.util.Observer;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.awt.event.WindowEvent;
 
 public class View extends JFrame implements Observer {
     private final Controller controller;
@@ -61,7 +62,7 @@ public class View extends JFrame implements Observer {
         JButton stopButton = new JButton("Stop");
         stopButton.addActionListener(e -> {
             controller.stop();
-            this.dispose();
+            this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
         });
         controller.setObserver(this);
         JPanel panel = createMainPanel(alivePeers);

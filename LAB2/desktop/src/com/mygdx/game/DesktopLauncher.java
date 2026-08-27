@@ -10,7 +10,7 @@ public class DesktopLauncher {
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
 		config.setForegroundFPS(60);
 		config.setTitle("DeliveryGame");
-		config.setResizable(false);
+		config.setResizable(true);
 		config.setWindowedMode(1600, 1200);
 		new Lwjgl3Application(new DeliveryGame(), config);
 	}

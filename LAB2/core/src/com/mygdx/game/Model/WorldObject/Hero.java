@@ -10,6 +10,7 @@ public class Hero extends MapObject {
     private final int PLAYER_SHIFT_Y = 24;
     private final int PLAYER_SPEED = 500;
     private boolean pickable = false;
+    private boolean isVisible = true;
 
     public Hero() {
         bounds.x = PLAYER_SHIFT_X + 32 * 11;
@@ -55,6 +56,18 @@ public class Hero extends MapObject {
 
     public boolean isPickSomething() {
         return pickable;
+    }
+
+    public boolean isVisible() {
+        return isVisible;
+    }
+
+    public void setVisible() {
+        isVisible = true;
+    }
+
+    public void setInvisible() {
+        isVisible = false;
     }
 
     public void setPickable(){

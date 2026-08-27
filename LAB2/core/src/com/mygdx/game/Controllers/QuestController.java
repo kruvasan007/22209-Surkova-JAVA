@@ -33,9 +33,15 @@ public class QuestController extends ComponentObject implements Component {
     }
 
     public void setTaskDone() {
+        int completedTaskId = currentTask.getId();
         currentQuest.setQuestTaskDone();
         currentTask = currentQuest.getCurrentTask();
         notify("Complete task", ComponentObserver.ComponentEvent.COMPLETE_TASK);
+        if (currentQuest.isQuestDone()) {
+            notify("End game", ComponentObserver.ComponentEvent.END_GAME);
+        } else {
+            notify(String.valueOf(completedTaskId), ComponentObserver.ComponentEvent.THANKS);
+        }
     }
 
     @Override

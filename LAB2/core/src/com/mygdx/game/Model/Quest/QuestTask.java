@@ -10,10 +10,20 @@ public class QuestTask {
     private TaskProperties taskProperties;
     private int id;
     private String taskPhrase;
+    private String orderTexturePath;
     private QuestType questType;
     private Coords questPoint;
     public Coords getQuestPoint() {
         return questPoint;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getOrderTexturePath() {
+        if (orderTexturePath == null) return "Textures/box.png";
+        return orderTexturePath;
     }
 
     public String getTaskPhrase() {

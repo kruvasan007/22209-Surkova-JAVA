@@ -45,6 +45,7 @@ public class DeliveryGame extends com.badlogic.gdx.Game implements ViewObserver 
 
     @Override
     public void resize(int width, int height) {
+        super.resize(width, height);
     }
 
     @Override

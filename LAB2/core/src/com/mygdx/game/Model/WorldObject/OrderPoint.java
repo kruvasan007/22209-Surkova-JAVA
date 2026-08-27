@@ -7,11 +7,14 @@ public class OrderPoint extends MapObject{
 
     private final Sprite sprite;
 
-    public OrderPoint(Integer x, Integer y){
-        bounds.x = x * 32;
-        bounds.y = y * 32;
-        bounds.width = 78;
-        sprite = new Sprite(new Texture("Textures/box.png"));
+    public OrderPoint(Integer x, Integer y, String texturePath){
+        bounds.x = x * 32 + 12;
+        bounds.y = y * 32 + 12;
+        bounds.width = 40;
+        bounds.height = 40;
+        sprite = new Sprite(new Texture(texturePath));
+        sprite.setSize(bounds.width, bounds.height);
+        sprite.setPosition(bounds.x, bounds.y);
     }
 
     public float getX() {

@@ -4,9 +4,11 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.maps.MapObject;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.Frustum;
@@ -20,6 +22,7 @@ import com.mygdx.game.Model.World;
 import com.mygdx.game.Model.WorldObject.Hero;
 import com.mygdx.game.Model.WorldObject.NonPlayerCharacter;
 import com.mygdx.game.Model.WorldObject.OrderDistributionPoint;
+import com.mygdx.game.Model.WorldObject.Vehicle;
 import com.mygdx.game.Observers.Component;
 import com.mygdx.game.Observers.ComponentObserver;
 import com.mygdx.game.Renderer.TextureMapObjectRenderer;
@@ -37,8 +40,10 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
     private final OrthogonalTiledMapRenderer renderer;
     private final Controller controller;
     private final SpriteBatch batch;
+    private final ShapeRenderer shapeRenderer;
     private boolean isOrderVisible = false;
     private boolean isDialogOpen = false;
+    private boolean isFPressed = false;
 
     public GameScreen(ResourceManager resourceManager) {
         super(resourceManager);
@@ -57,6 +62,7 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
         camera.position.x = hero.getX();
         camera.position.y = hero.getY();
         textureMapObjectRenderer = new TextureMapObjectRenderer(world.getTiledMap(), batch);
+        shapeRenderer = new ShapeRenderer();
 
         controller.addObserver(this);
         controller.getQuestController().addObserver(this);
@@ -83,32 +89,68 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
             case MOVE_ORDER -> isOrderVisible = world.getOrderPoint().isVisible();
             case START_TASK -> isOrderVisible = true;
             case COMPLETE_TASK -> isOrderVisible = false;
-            case END_GAME -> this.notify("Edn the game", ViewObserver.ViewEvent.END_GAME);
+            case THANKS -> createThanksDialog(value, false);
+            case END_GAME -> createThanksDialog(value, true);
             default -> {
             }
         }
+    }
+
+    public void createThanksDialog(String value, boolean isFinal) {
+        if (!isDialogOpen) {
+            Gdx.input.setInputProcessor(stage);
+            Dialog dialog = new Dialog("Спасибо!", ResourceManager.skin, "dialog") {
+                @Override
+                protected void result(Object object) {
+                    isDialogOpen = false;
+                    Gdx.input.setInputProcessor(GameScreen.this);
+                    if (isFinal) {
+                        GameScreen.this.notify("End the game", ViewObserver.ViewEvent.END_GAME);
+                    }
+                }
+            };
+            dialog.text(isFinal ? "Все задания выполнены. Ты легенда доставки!" : getThanksText(value));
+            dialog.button(isFinal ? "Завершить" : "Дальше", true);
+            dialog.setScaleY(1.75f);
+            dialog.setScaleX(1.15f);
+            dialog.show(stage);
+            isDialogOpen = true;
+        }
+    }
+
+    private String getThanksText(String value) {
+        return switch (value) {
+            case "1" -> "Коробка спасена! Клиент счастлив, менеджер выдохнул.";
+            case "2" -> "Потерянная посылка вернулась домой. Отличный розыск!";
+            case "3" -> "Подозрительный тип больше не мешает маршрутам. Чистая работа!";
+            default -> "Заказ закрыт красиво. Продолжаем в том же духе!";
+        };
     }
 
     public void createTaskDialog() {
         QuestTask questTask = controller.getQuestController().getCurrentTask();
         if (!isDialogOpen) {
             Gdx.input.setInputProcessor(stage);
-            Dialog dialog = new Dialog("New order", ResourceManager.skin, "dialog") {
+            Dialog dialog = new Dialog("Новое задание", ResourceManager.skin, "dialog") {
                 @Override
                 protected void result(Object object) {
                     if (object.toString().equals("false")) {
                         isDialogOpen = false;
+                        Gdx.input.setInputProcessor(GameScreen.this);
                     } else if (object.toString().equals("true")) {
                         sendMessage(Component.MESSAGE.START_TASK, "Start");
-                        world.createObject(questTask.getQuestPoint());
-                        isOrderVisible = true;
+                        if (questTask.getQuestType() == QuestTask.QuestType.DELIVERY) {
+                            world.createObject(questTask.getQuestPoint(), questTask.getOrderTexturePath());
+                            isOrderVisible = true;
+                        }
                         isDialogOpen = false;
+                        Gdx.input.setInputProcessor(GameScreen.this);
                     }
                 }
             };
             dialog.text(questTask.getTaskPhrase());
-            dialog.button("No", false);
-            dialog.button("Yes", true);
+            dialog.button("Нет", false);
+            dialog.button("Да", true);
             dialog.setScaleY(1.75f);
             dialog.setScaleX(1.15f);
             dialog.show(stage);
@@ -146,45 +188,136 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
     public void render(float v) {
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         renderer.setView(camera);
         renderer.render();
-        world.getMiniMap().update(hero.getX(), hero.getY(), camera.viewportWidth, camera.viewportHeight);
-        world.getMiniMap().render();
 
         controller.renderIteration();
+        renderTargetHighlight();
 
         batch.begin();
-        batch.draw(hero.getSprite(), hero.getX(), hero.getY());
+        renderMapObjectsBehindHero();
+        renderVehicles();
+        if (hero.isVisible()) {
+            batch.draw(hero.getSprite(), hero.getX(), hero.getY());
+        }
         Frustum camFrustum = camera.frustum;
         for (NonPlayerCharacter nps : world.getNpcList()) {
-            if (camFrustum.pointInFrustum(nps.getX(), nps.getY(), 0)
-                    || camFrustum.pointInFrustum(nps.getX() + nps.getWidth(), nps.getY(), 0)
-                    || camFrustum.pointInFrustum(nps.getX() + nps.getWidth(), nps.getY() + nps.getHeight(), 0)
-                    || camFrustum.pointInFrustum(nps.getX(), nps.getY() + nps.getHeight(), 0)) {
+            if (isVisible(camFrustum, nps.getX(), nps.getY(), nps.getWidth(), nps.getHeight())) {
                 batch.draw(nps.getSprite(), nps.getX(), nps.getY());
             }
         }
 
         if (isOrderVisible)
-            batch.draw(world.getOrderPoint().getSprite(), world.getOrderPoint().getX(), world.getOrderPoint().getY());
+            world.getOrderPoint().getSprite().draw(batch);
 
         batch.draw(distributionPoint.getSprite(), distributionPoint.getX(), distributionPoint.getY());
 
         resourceManager.font.draw(batch, distributionPoint.getLabel().getLabel(), distributionPoint.getLabel().getX(), distributionPoint.getLabel().getY());
 
-        for (MapObject obj : world.getTiledMap().getLayers().get("objLayer").getObjects())
-            textureMapObjectRenderer.renderObject(obj);
+        renderMapObjectsInFrontOfHero();
+        renderVehicleHint();
+        renderQuestPointHint();
+        renderControlHints();
         batch.setProjectionMatrix(camera.combined);
         batch.end();
 
         stage.act();
         stage.draw();
 
+        world.getMiniMap().update(hero.getX(), hero.getY(), camera.viewportWidth, camera.viewportHeight);
+        world.getMiniMap().render();
+        Gdx.gl.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
         moveCamera();
         checkInput();
     }
 
+    private void renderMapObjectsBehindHero() {
+        for (MapObject obj : world.getTiledMap().getLayers().get("objLayer").getObjects()) {
+            if (obj.getProperties().get("y", Float.class) < hero.getY()) {
+                textureMapObjectRenderer.renderObject(obj);
+            }
+        }
+    }
+
+    private void renderVehicles() {
+        for (Vehicle vehicle : world.getVehicleList()) {
+            vehicle.getSprite().draw(batch);
+        }
+    }
+
+    private void renderVehicleHint() {
+        Vehicle nearestVehicle = controller.getNearestVehicle();
+        if (!controller.isDriving() && nearestVehicle != null) {
+            resourceManager.font.draw(batch, "F: сесть", nearestVehicle.getX() + 12, nearestVehicle.getY() + nearestVehicle.getHeight() + 4);
+        }
+    }
+
+    private void renderQuestPointHint() {
+        if (controller.isQuestPointAvailable()) {
+            resourceManager.font.draw(batch, "E: задание", distributionPoint.getX() - 4, distributionPoint.getY() + distributionPoint.getHeight() + 4);
+        }
+    }
+
+    private void renderControlHints() {
+        float x = camera.position.x + camera.viewportWidth / 2 - 86;
+        float y = camera.position.y - camera.viewportHeight / 2 + 34;
+        resourceManager.font.draw(batch, "E: удар", x, y);
+        if (controller.isDriving()) {
+            resourceManager.font.draw(batch, "F: выйти", x, y + 18);
+        }
+    }
+
+    private void renderMapObjectsInFrontOfHero() {
+        for (MapObject obj : world.getTiledMap().getLayers().get("objLayer").getObjects()) {
+            if (obj.getProperties().get("y", Float.class) >= hero.getY()) {
+                textureMapObjectRenderer.renderObject(obj);
+            }
+        }
+    }
+
+    private boolean isVisible(Frustum camFrustum, float x, float y, float width, float height) {
+        return camFrustum.pointInFrustum(x, y, 0)
+                || camFrustum.pointInFrustum(x + width, y, 0)
+                || camFrustum.pointInFrustum(x + width, y + height, 0)
+                || camFrustum.pointInFrustum(x, y + height, 0);
+    }
+
+    private void renderTargetHighlight() {
+        QuestTask currentTask = controller.getQuestController().getCurrentTask();
+        if (!controller.getQuestController().isTaskStarted()
+                || currentTask.getQuestType() != QuestTask.QuestType.KILL) {
+            return;
+        }
+
+        int targetIndex = currentTask.getQuestPoint().getX();
+        if (targetIndex >= world.getNpcList().size()) {
+            return;
+        }
+
+        NonPlayerCharacter target = world.getNpcList().get(targetIndex);
+        if (!target.isAlive()) {
+            return;
+        }
+
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.RED);
+        shapeRenderer.circle(target.getX() + target.getWidth() / 2, target.getY() + target.getHeight() / 2, 40);
+        shapeRenderer.end();
+    }
+
     private void checkInput() {
+        if (Gdx.input.isKeyPressed(Input.Keys.F)) {
+            if (!isFPressed) {
+                controller.movePlayer(PlayerAction.EnterVehicle);
+                isFPressed = true;
+            }
+        } else {
+            isFPressed = false;
+        }
+
         deltaTime += Gdx.graphics.getDeltaTime();
         float FREQUENCY_FRAME_CHANGE = 0.1f;
         if (deltaTime > FREQUENCY_FRAME_CHANGE) {
@@ -203,7 +336,7 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
             } else if (Gdx.input.isKeyPressed(Input.Keys.S)) {
                 controller.movePlayer(PlayerAction.DownWalk);
             } else if (Gdx.input.isKeyPressed(Input.Keys.E)) {
-                controller.movePlayer(PlayerAction.Punch);
+                controller.movePlayer(PlayerAction.Action);
             } else
                 controller.movePlayer(PlayerAction.Wait);
             deltaTime = 0;
@@ -213,6 +346,8 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
     @Override
     public void resize(int width, int height) {
         super.resize(width, height);
+        stage.getViewport().update(width, height, true);
+        cameraResize(width / 4, height / 4);
     }
 
     @Override
@@ -229,6 +364,8 @@ public class GameScreen extends BaseScreen implements Screen, InputProcessor, Co
     @Override
     public void dispose() {
         renderer.dispose();
+        shapeRenderer.dispose();
+        world.getMiniMap().dispose();
     }
 
     @Override

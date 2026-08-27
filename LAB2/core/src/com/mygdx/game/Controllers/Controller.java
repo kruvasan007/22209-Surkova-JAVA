@@ -3,6 +3,7 @@ package com.mygdx.game.Controllers;
 import com.mygdx.game.Model.Enum.PlayerAction;
 import com.mygdx.game.Model.World;
 import com.mygdx.game.Model.WorldObject.Hero;
+import com.mygdx.game.Model.WorldObject.Vehicle;
 import com.mygdx.game.Observers.Component;
 import com.mygdx.game.Observers.ComponentObject;
 import com.mygdx.game.Observers.ComponentObserver;
@@ -26,13 +27,17 @@ public class Controller extends ComponentObject implements Component {
     public void renderIteration() {
         moveController.moveNPC();
         checkQuestAction();
-        checkQuestPointSenderCollision();
     }
 
-    public void checkQuestPointSenderCollision() {
-        if (collisionManager.checkCollision(hero, world.getDistributionPoint())
-                && questController.isTasksAvailable())
+    public boolean isQuestPointAvailable() {
+        return collisionManager.checkCollision(hero, world.getDistributionPoint())
+                && questController.isTasksAvailable();
+    }
+
+    public void tryGetNewTask() {
+        if (isQuestPointAvailable()) {
             notify("Get new task", ComponentObserver.ComponentEvent.GET_NEW_TASK);
+        }
     }
 
     public void checkQuestAction() {
@@ -53,7 +58,7 @@ public class Controller extends ComponentObject implements Component {
                 case KILL -> {
                     if (!world.getNpcList()
                             .get(questController.getCurrentTask().getQuestPoint().getX()).isAlive()) {
-                        notify("End game", ComponentObserver.ComponentEvent.END_GAME);
+                        questController.setTaskDone();
                     }
                 }
                 default ->
@@ -72,6 +77,8 @@ public class Controller extends ComponentObject implements Component {
             case Talk -> moveController.pressedTalk();
             case Wait -> moveController.pressedCancel();
             case Punch -> moveController.pressedPunch();
+            case EnterVehicle -> moveController.switchVehicle();
+            case Action -> pressedAction();
             case UpWalk -> moveController.pressedUp();
             case DownWalk -> moveController.pressedDown();
             case LeftWalk -> moveController.pressedLeft();
@@ -81,8 +88,27 @@ public class Controller extends ComponentObject implements Component {
         }
     }
 
+    private void pressedAction() {
+        if (isDriving()) {
+            return;
+        }
+        if (isQuestPointAvailable()) {
+            tryGetNewTask();
+        } else {
+            moveController.pressedPunch();
+        }
+    }
+
     public QuestController getQuestController() {
         return questController;
+    }
+
+    public boolean isDriving() {
+        return moveController.isDriving();
+    }
+
+    public Vehicle getNearestVehicle() {
+        return moveController.getNearestVehicle();
     }
 
     @Override
